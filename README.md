@@ -8,6 +8,8 @@
 
 This repository corresponds to the ICSE 2026 Research Track paper and its accompanying artifact, **DeFT**, a tool and methodology designed to improve testing reliability in autonomous driving systems by addressing non-determinism in planning tests. Traditional system-level scenario tests often produce varying outcomes, making failure reproduction and debugging challenging. DeFT is a methodology that converts non-deterministic system-level scenario tests into deterministic module-level tests by extracting and reconstructing planning inputs.
 
+**TL;DR**: System-level ADS tests are often non-deterministic due to asynchronous module interaction, even though the planning module itself is deterministic given identical inputs. DeFT is our proposed testing methodology that converts a single system-level scenario test into multiple module-level tests by isolating and reconstructing the planning module’s execution context. When precise and correct inputs are extracted and constructed, we demonstrate that module tests can accurately reproduce planning trajectories and reliably reproduce failures observed during system-level execution. This maintains determinism at the module level and improves failure reproducibility compared to rerunning system-level scenarios.
+
 ---
 
 ## Table of Contents
