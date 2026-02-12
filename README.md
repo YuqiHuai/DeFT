@@ -2,6 +2,7 @@
 
 [![ICSE 2026 Research Track](https://img.shields.io/badge/ICSE%202026-Research%20Track-blue?style=flat-square)](https://conf.researchr.org/details/icse-2026/icse-2026-research-track/210/DeFT-Maintaining-Determinism-and-Extracting-Unit-Tests-for-Autonomous-Driving-Planni)
 [![Artifact DOI](https://img.shields.io/badge/Artifact%20DOI-10.5281%2Fzenodo.17978768-blue?style=flat-square)](https://doi.org/10.5281/zenodo.17978768)
+[![Virtual Machine DOI](https://img.shields.io/badge/Virtual%20Machine%20DOI-10.5281%2Fzenodo.18615907-blue?style=flat-square)](https://doi.org/10.5281/zenodo.18615907)
 [![GitHub](https://img.shields.io/badge/GitHub-YuqiHuai%2FDeFT-black?logo=github&style=flat-square)](https://github.com/YuqiHuai/DeFT)
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC--BY--4.0-lightgrey.svg?style=flat-square)](https://creativecommons.org/licenses/by/4.0/)
 
