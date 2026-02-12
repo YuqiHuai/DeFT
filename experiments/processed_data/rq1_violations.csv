@@ -1,0 +1,10 @@
+Approach,no_collision,collision,deterministic,non_deterministic
+\avfuzzer,255,99,81,18
+\behavexplor,63,214,177,37
+\decictor,290,11,1,10
+\deepcollision,399,56,36,20
+\doppeltest,2824,43,5,38
+\drivefuzz,185,115,89,26
+\samota,71,93,74,19
+\scenorita,1413,27,8,19
+Total,5500,658,471,187

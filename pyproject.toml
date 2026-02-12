@@ -1,0 +1,56 @@
+[tool.poetry]
+name = "deft"
+version = "0.1.0"
+description = ""
+authors = ["Yuqi Huai <yhuai@uci.edu>"]
+readme = "README.md"
+packages = [
+    { include = "apollo_modules" },
+    { include = "deft" },
+    { include = "apollo_oracle" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+cyber-record = "^0.1.12"
+numpy = "^2.2.2"
+beautifulsoup4 = "^4.13.3"
+loguru = "^0.7.3"
+deap = "^1.4.2"
+docker = "^7.1.0"
+pre-commit = "^4.1.0"
+pandas = "^2.2.3"
+matplotlib = "^3.10.0"
+nanoid = "^2.0.0"
+pymongo = {extras = ["srv"], version = "^4.11.2"}
+python-dotenv = "^1.0.1"
+prettytable = "^3.15.1"
+shapely = "^2.0.7"
+rich = "^13.9.4"
+rich-argparse = "^1.7.0"
+networkx = "^3.4.2"
+scipy = "^1.15.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 88
+exclude = ["apollo_modules"]
+indent-width = 4
+lint.select = ["E", "F", "W", "C90", "I"]
+lint.ignore = ["C901"]
+
+[tool.ruff.format]
+# Prefer single quotes over double quotes.
+quote-style = "single"
+
+[tool.poetry.scripts]
+apollo_oracle = "apollo_oracle.cli:main"
+apollo_resim = "apollo_resim.cli:main"
+deft = "deft.cli:main"
+
+
+[tool.poetry.plugins."apollo_oracle.extensions"]
+collision = "apollo_oracle.oracles:CollisionOracle"

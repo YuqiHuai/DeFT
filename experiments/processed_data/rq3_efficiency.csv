@@ -1,0 +1,9 @@
+Approach,System Test,Module Test,Reduction
+\avfuzzer,86.33,54.23,37.19
+\behavexplor,138.43,86.03,37.85
+\decictor,84.85,54.55,35.71
+\deepcollision,60.9,39.23,35.58
+\doppeltest,35.77,18.69,47.73
+\drivefuzz,88.47,57.17,35.38
+\samota,83.8,51.46,38.59
+\scenorita,34.79,21.88,37.11

@@ -1,0 +1,143 @@
+landmark {
+  name: "Route: Forward Loop",
+  waypoint {
+    pose {
+      x: 559886.032906
+      y: 4157638.04137
+    }
+  }
+  waypoint {
+    pose {
+      x: 559888.261842
+      y: 4157600.97499
+    }
+  }
+  waypoint {
+    pose {
+      x: 559766.290517
+      y: 4157494.68382
+    }
+  }
+  waypoint {
+    pose {
+      x: 559551.057378
+      y: 4157304.51449
+    }
+  }
+  waypoint {
+    pose {
+      x: 559415.862321
+      y: 4157185.32686
+    }
+  }
+  waypoint {
+    pose {
+      x: 559448.426217
+      y: 4157111.96631
+    }
+  }
+  waypoint {
+    pose {
+      x: 559374.151139
+      y: 4157082.42149
+    }
+  }
+  waypoint {
+    pose {
+      x: 559138.794812
+      y: 4157313.20403
+    }
+  }
+  waypoint {
+    pose {
+      x: 559394.703552
+      y: 4157731.10265
+    }
+  }
+  waypoint {
+    pose {
+      x: 559538.324297
+      y: 4157967.74194
+    }
+  }
+  waypoint {
+    pose {
+      x: 559873.13981
+      y: 4157652.70113
+    }
+  }
+}
+
+landmark {
+  name: "Route: Backward Loop",
+  waypoint {
+    pose {
+      x: 559888.580348
+      y: 4157640.70482
+    }
+  }
+  waypoint {
+    pose {
+      x: 559833.811979
+      y: 4157701.72581
+    }
+  }
+  waypoint {
+    pose {
+      x: 559533.772977
+      y: 4157974.19103
+    }
+  }
+  waypoint {
+    pose {
+      x: 559342.830621
+      y: 4157792.37746
+    }
+  }
+  waypoint {
+    pose {
+      x: 559231.823388
+      y: 4157252.84421
+    }
+  }
+  waypoint {
+    pose {
+      x: 559322.531613
+      y: 4157107.35295
+    }
+  }
+  waypoint {
+    pose {
+      x: 559436.845445
+      y: 4157010.10249
+    }
+  }
+  waypoint {
+    pose {
+      x: 559443.516516
+      y: 4157122.61986
+    }
+  }
+  waypoint {
+    pose {
+      x: 559892.406194
+      y: 4157597.11642
+    }
+  }
+  waypoint {
+    pose {
+      x: 559883.734268
+      y: 4157667.77276
+    }
+  }
+}
+
+landmark {
+    name: "ROI: Parking Lot",
+    waypoint {
+        pose {
+            x: 559888.72
+            y: 4157662.47
+        }
+    }
+}
