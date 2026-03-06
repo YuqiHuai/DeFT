@@ -1,6 +1,7 @@
 # DeFT: Maintaining Determinism and Extracting Unit Tests for Autonomous Driving Planning
 
 [![ICSE 2026 Research Track](https://img.shields.io/badge/ICSE%202026-Research%20Track-blue?style=flat-square)](https://conf.researchr.org/details/icse-2026/icse-2026-research-track/210/DeFT-Maintaining-Determinism-and-Extracting-Unit-Tests-for-Autonomous-Driving-Planni)
+[![Paper DOI](https://img.shields.io/badge/Paper%20DOI-10.1145%2F3744916.3773252-blue?style=flat-square)](https://doi.org/10.1145/3744916.3773252)
 [![Artifact DOI](https://img.shields.io/badge/Artifact%20DOI-10.5281%2Fzenodo.17978768-blue?style=flat-square)](https://doi.org/10.5281/zenodo.17978768)
 [![Virtual Machine DOI](https://img.shields.io/badge/Virtual%20Machine%20DOI-10.5281%2Fzenodo.18615907-blue?style=flat-square)](https://doi.org/10.5281/zenodo.18615907)
 [![GitHub](https://img.shields.io/badge/GitHub-YuqiHuai%2FDeFT-black?logo=github&style=flat-square)](https://github.com/YuqiHuai/DeFT)
