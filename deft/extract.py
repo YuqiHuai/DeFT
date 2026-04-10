@@ -1,12 +1,11 @@
 import shutil
 from pathlib import Path
 
-from config import CONFIG
 from deft.deft import DeFTLog
 
 
 def run_extract(record_path: Path, frames_dir: Path):
-    agent = DeFTLog(CONFIG.APOLLO_ROOT)
+    agent = DeFTLog()
 
     print("Extracting frames ...")
     frames = agent.extract_frames(str(record_path))
