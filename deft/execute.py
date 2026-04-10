@@ -7,7 +7,7 @@ from deft.deft_container import DeFTContainer
 
 def run_execute(frames_dir: Path, outputs_dir: Path):
     print("Starting DeFT container...")
-    ctn = DeFTContainer(Path(CONFIG.APOLLO_ROOT), "deft")
+    ctn = DeFTContainer(str(Path(CONFIG.APOLLO_ROOT)), 'deft')
 
     if not ctn.is_running():
         ctn.start()
