@@ -48,17 +48,13 @@ def get_empty_message(topic: str):
 
 
 class DeFTBase:
-    def __init__(self, apollo_root: str):
+    def __init__(self):
         """
         Initialize the DeFTBase class.
 
         Args:
             apollo_root (str): The root directory of the Apollo installation.
         """
-        self.apollo_root = Path(apollo_root)
-        self.deft_root = Path(self.apollo_root, 'modules', 'deft')
-        assert self.deft_root.exists(), 'DeFT is not installed for this apollo version'
-        self.ctn_name = 'apollo_dev_deft'
         self.messages = dict()
         self.num_msgs = 0
 
