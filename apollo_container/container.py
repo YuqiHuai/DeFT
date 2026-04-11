@@ -51,7 +51,16 @@ class ApolloContainer:
         """
         assert self.is_running(), f'Container {self.container_name} is not running.'
         ctn = docker.from_env().containers.get(self.container_name)
-        return ctn.attrs['NetworkSettings']['IPAddress']
+        
+        ip_address = ""
+        try:
+            ip_address = ctn.attrs['NetworkSettings']['Networks']['bridge']['IPAddress']
+        except KeyError:
+            try:
+                ip_address = ctn.attrs['NetworkSettings']['IPAddress']
+            except KeyError:
+                raise Exception(f"Could not find IP address for container {self.container_name}")
+        return ip_address
 
     def exists(self) -> bool:
         """
