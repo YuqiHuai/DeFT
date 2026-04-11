@@ -230,7 +230,7 @@ To demonstrate the generalizability of frame-based testing beyond Apollo, we dev
     > Module tests extracted from the previous step under `out/testdata` are loaded into 
     > DeFT-Apollo container and executed using an dedicated module test execution entry 
     > point. After processing, all actual outputs of the planning module are
-    > stored under `out/testdata_out/{test_index}/planning.bin`.
+    > stored under `out/testdata_out/{test_index}/deft.bin`.
 
 7. Run validation script to verify accuracy of reproduced planning trajectories
 
@@ -238,8 +238,8 @@ To demonstrate the generalizability of frame-based testing beyond Apollo, we dev
     poetry run deft validate
     ```
 
-    > This script also converts `deft.bin` (expected planning module output) and `planning.bin`
-    > (actual planning module output) into ASCII format for readability purposes.
+    > This script also converts `deft.bin` (actual planning module output) and `planning.bin`
+    > (expected planning module output) into ASCII format for readability purposes.
 
     The expected output of the script is
 
