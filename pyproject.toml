@@ -50,6 +50,7 @@ quote-style = "single"
 apollo_oracle = "apollo_oracle.cli:main"
 apollo_resim = "apollo_resim.cli:main"
 deft = "deft.cli:main"
+plot_frame = "plot_frame.cli:main"
 
 
 [tool.poetry.plugins."apollo_oracle.extensions"]

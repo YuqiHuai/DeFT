@@ -24,7 +24,6 @@ class ApolloVehicleConfig:
 def get_vehicle_params(vehicle_param_file: str) -> ApolloVehicleConfig:
     with open(vehicle_param_file, 'r') as fp:
         v = text_format.Parse(fp.read(), VehicleConfig())
-        print(v)
     return ApolloVehicleConfig(
         length=v.vehicle_param.length,
         width=v.vehicle_param.width,
