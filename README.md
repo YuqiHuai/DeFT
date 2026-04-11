@@ -107,7 +107,7 @@ performance.
   consistency heuristics. It does not rely on system-specific metadata and represents a fully general 
   realization of the DeFT methodology, but may introduce approximation error compared to metadata-assisted approaches.
 
-- **DeFTApollo (optimized)**  
+- **DeFTApollo (Apollo-optimized)**  
   An implementation that leverages Apollo's planning debug metadata (e.g., header sequence numbers) to 
   directly recover most input messages. This reduces the need for search and improves efficiency and 
   determinism, but depends on system-specific features.
@@ -122,6 +122,9 @@ performance.
   This approach is fully deterministic and efficient but requires such metadata to be available (e.g., 
   by rerunning system-level tests with the DeFT-enabled Apollo used in our evaluation)
 
+### `plot_frame`
+
+This directory contains utility feature to plot a frame for illustration purpose.
 
 ### `data/`
 
