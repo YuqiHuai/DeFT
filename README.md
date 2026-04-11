@@ -173,6 +173,10 @@ bash scripts/set_hd_map.sh sunnyvale_loop
 Use this before running Apollo or oracle analysis to ensure
 the correct map is selected.
 
+### `examples/deft_autoware`
+
+To demonstrate the generalizability of frame-based testing beyond Apollo, we developed a variant of DeFT for Autoware. However, due to Autoware’s rapid and continuous evolution, keeping this implementation up to date and reliably reproducible is challenging. This variant uses `rclpy` to implement a subscriber node that records message interactions during scenario simulation, along with a test publisher node that feeds these messages back to the planning module. This approach, recommended during an Autoware planning working group meeting, achieves the same level of determinism.
+
 ---
 
 ## Quick Start: Try DeFT on Sample Scenario
