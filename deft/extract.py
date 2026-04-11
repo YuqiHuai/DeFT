@@ -1,12 +1,12 @@
 import shutil
 from pathlib import Path
 
-# from deft.impl.deft_log import DeFTLog
+from deft.impl.deft_log import DeFTLog
 from deft.impl.deft_heuristic import DeFTHeuristic
 
 
 def run_extract(record_path: Path, frames_dir: Path):
-    agent = DeFTHeuristic()
+    agent = DeFTLog()
 
     print('Extracting frames ...')
     frames = agent.extract_frames(str(record_path))
