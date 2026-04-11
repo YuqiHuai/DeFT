@@ -89,5 +89,4 @@ class DeFTApollo(DeFTBase):
                 stories_header_num,
             )
             frames.append(frame)
-        exit(0)
         return frames
