@@ -4,8 +4,23 @@ from deft.utils import ApolloTopics
 
 
 class DeFTLog(DeFTBase):
-    def __init__(self, apollo_root: str):
-        super().__init__(apollo_root)
+    """
+    DeFTLog implements a log-assisted variant of DeFT that reconstructs
+    planning module input frames directly from pre-recorded DeFT metadata.
+
+    In this implementation, all required input headers (e.g., routing,
+    localization, prediction, traffic light) are explicitly stored in the
+    log (msg.deft.*). As a result, frame extraction does not require
+    Time-Sensitive Input Search (TISE) or heuristic inference.
+
+    This approach provides fully deterministic frame reconstruction, as it
+    bypasses message matching and temporal reasoning. However, it relies on
+    the availability of logs containing DeFT-specific metadata and is therefore
+    not applicable to raw ADS logs.
+
+    This implementation serves as a ground truth reference for validating the
+    correctness of more general DeFT approaches.
+    """
 
     def _extract_frames(self):
         planning_messages = self.messages[ApolloTopics.PLANNING]

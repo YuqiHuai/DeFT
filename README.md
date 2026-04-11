@@ -7,9 +7,9 @@
 [![GitHub](https://img.shields.io/badge/GitHub-YuqiHuai%2FDeFT-black?logo=github&style=flat-square)](https://github.com/YuqiHuai/DeFT)
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC--BY--4.0-lightgrey.svg?style=flat-square)](https://creativecommons.org/licenses/by/4.0/)
 
-This repository corresponds to the ICSE 2026 Research Track paper and its accompanying artifact, **DeFT**, a tool and methodology designed to improve testing reliability in autonomous driving systems by addressing non-determinism in planning tests. Traditional system-level scenario tests often produce varying outcomes, making failure reproduction and debugging challenging. DeFT is a methodology that converts non-deterministic system-level scenario tests into deterministic module-level tests by extracting and reconstructing planning inputs.
+This repository corresponds to the ICSE 2026 Research Track paper and its accompanying artifact, DeFT, a tool and methodology designed to improve testing reliability in autonomous driving systems by addressing non-determinism in planning tests. Traditional system-level scenario tests often produce varying outcomes, making failure reproduction and debugging challenging. DeFT is a methodology that converts non-deterministic system-level scenario tests into deterministic module-level tests by extracting and reconstructing planning module inputs and expected outputs from messages exchanged on the message bus.
 
-**TL;DR**: System-level ADS tests are often non-deterministic due to asynchronous module interaction, even though the planning module itself is deterministic given identical inputs. DeFT is our proposed testing methodology that converts a single system-level scenario test into multiple module-level tests by isolating and reconstructing the planning module’s execution context. When precise and correct inputs are extracted and constructed, we demonstrate that module tests can accurately reproduce planning trajectories and reliably reproduce failures observed during system-level execution. This maintains determinism at the module level and improves failure reproducibility compared to rerunning system-level scenarios.
+**TL;DR**: System-level scenario tests for ADSes are often non-deterministic due to asynchronous module interactions, even though the planning module itself is deterministic given identical inputs. DeFT describes a general methodology for transforming a single system-level scenario test into multiple module-level tests by isolating and reconstructing the planning module’s execution context. When accurate inputs are extracted and reconstructed, module-level tests can reproduce planning trajectories and reliably reproduce failures observed during system-level execution.
 
 ---
 
@@ -90,6 +90,38 @@ module tests.
 This directory contains parts of DeFT that are implemented in Python. More specifically, this
 portion of DeFT focuses on loading scenario record files, identifying inputs and outputs of the planning
 module, write extracted module tests to files, and running relevant scripts to execute module tests.
+
+#### Implementation Variants
+
+This repository includes multiple implementations of DeFT that reflect different tradeoffs between
+generality, efficiency, and required inputs.
+
+The DeFT methodology described in the paper is a general approach for reconstructing planning module
+inputs from system-level executions without relying on internal instrumentation. In practice, however,
+different implementations may leverage available information to improve reconstruction accuracy and
+performance.
+
+- **DeFTHeuristic (TISE-based)**  
+  A heuristic-based implementation that reconstructs planning inputs using Time-Sensitive Input Search (TISE). 
+  This variant estimates frame creation times and selects input messages based on temporal proximity and 
+  consistency heuristics. It does not rely on system-specific metadata and represents a fully general 
+  realization of the DeFT methodology, but may introduce approximation error compared to metadata-assisted approaches.
+
+- **DeFTApollo (optimized)**  
+  An implementation that leverages Apollo's planning debug metadata (e.g., header sequence numbers) to 
+  directly recover most input messages. This reduces the need for search and improves efficiency and 
+  determinism, but depends on system-specific features.
+
+- **DeFTLast (baseline)**  
+  A heuristic-based implementation that reconstructs planning inputs using message timestamps and
+  the "latest-before-time" strategy. This variant does not rely on system-specific metadata and most
+  closely follows the general DeFT design described in the paper.
+
+- **DeFTLog (presentation)**  
+  A variant that reconstructs frames directly from enriched logs containing pre-recorded DeFT metadata.
+  This approach is fully deterministic and efficient but requires such metadata to be available (e.g., 
+  by rerunning system-level tests with the DeFT-enabled Apollo used in our evaluation)
+
 
 ### `data/`
 

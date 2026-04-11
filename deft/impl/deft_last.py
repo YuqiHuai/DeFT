@@ -4,12 +4,25 @@ from deft.utils.apollo_topics import PLANNING_INPUT_TOPICS, ApolloTopics
 
 
 class DeFTLast(DeFTBase):
+    """
+    DeFTLast implements a heuristic-based variant of DeFT that reconstructs
+    planning module input frames by selecting the most recent message from
+    each input topic prior to each planning execution.
 
-    def __init__(self, apollo_root: str):
-        super().__init__(apollo_root)
+    This implementation approximates the Time-Sensitive Input Search (TISE)
+    by maintaining sliding pointers over time-sorted message streams for each
+    input topic. For every planning message, it advances each topic pointer
+    to include all messages with timestamps less than or equal to the planning
+    time, and records the latest observed sequence number as the input.
+
+    This approach enforces temporal consistency (messages must occur before
+    the planning step) and implicitly follows the "latest message" heuristic
+    described in DeFT. In practice, this method yield module-tests that are invalid
+    due to latest message from a channel violating constraint of tF (i.e., the
+    frame-construction time).
+    """
 
     def _extract_frames(self):
-
         planning_messages = self.messages[ApolloTopics.PLANNING]
         planning_sequence_numbers = sorted(planning_messages.keys())
 
@@ -19,7 +32,7 @@ class DeFTLast(DeFTBase):
             if topic in self.messages:
                 topic_sorted[topic] = sorted(
                     self.messages[topic].items(),
-                    key=lambda x: x[1][1]  # sort by timestamp
+                    key=lambda x: x[1][1],  # sort by timestamp
                 )
 
         # Initialize sliding pointers per topic
@@ -28,17 +41,14 @@ class DeFTLast(DeFTBase):
 
         frames = []
 
-
         for psn in planning_sequence_numbers:
-
             planning_msg, planning_time = planning_messages[psn]
             planning_time = planning_msg.header.timestamp_sec
 
             # Slide each topic pointer forward
             for topic, msgs in topic_sorted.items():
-
                 ptr = topic_pointers[topic]
-                while ptr < len(msgs) and msgs[ptr][1][1]/1e9 <= planning_time:
+                while ptr < len(msgs) and msgs[ptr][1][1] / 1e9 <= planning_time:
                     seq_num, (msg, t) = msgs[ptr]
                     topic_latest_seq[topic] = seq_num
                     ptr += 1

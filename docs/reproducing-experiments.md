@@ -4,6 +4,8 @@ This section describes how to reproduce the experimental results reported in our
 
 Our evaluation follows the same workflow described in Section 5 of the paper and consists of generating system-level scenario tests, extracting planning module tests using DeFT, and comparing determinism and efficiency.
 
+DeFT is designed as a general methodology for reconstructing module-level inputs from system-level executions. In our evaluation, we implement DeFT on Apollo and leverage available system metadata (e.g., planning debug information) to improve reconstruction accuracy. This reflects a realistic deployment setting where such metadata is accessible for debugging and validation purposes. As a result, our evaluation characterizes the upper bound of DeFT’s performance under high-fidelity input reconstruction. In settings where such metadata is unavailable, DeFT instead relies on heuristic reconstruction techniques (e.g., TISE), which trade reconstruction accuracy for broader applicability.
+
 ---
 
 ### Step 0: Generate Initial Scenario Test Suite

@@ -49,16 +49,16 @@ def run_verify(outputs_dir: Path):
 
 def main(parser):
     parser.add_argument(
-        "--outputs-dir",
-        default="out/testdata_out",
-        help="Directory containing execution outputs",
+        '--outputs-dir',
+        default='out/testdata_out',
+        help='Directory containing execution outputs',
     )
 
     def handler(args):
         outputs_dir = Path(args.outputs_dir)
 
         if not outputs_dir.exists():
-            parser.error("Outputs directory does not exist")
+            parser.error('Outputs directory does not exist')
 
         run_verify(outputs_dir)
 

@@ -32,7 +32,8 @@ This directory should be placed under `apollo/modules/`.
 
 This directory mirrors Apollo’s standard module layout and contains **only the files
 that have been modified or extended**. Similar modifications can be made to other 
-modules so that DeFT can be used to reproduce their executions
+modules so that DeFT can be used to reproduce their executions. These modifications
+are not required for module tests to be extracted.
 
 ### Source Files
 
@@ -40,16 +41,12 @@ modules so that DeFT can be used to reproduce their executions
   Applies a [bug fix](https://github.com/ApolloAuto/apollo/commit/9c764ed81b06f6935e658122e6b5cb507fce265e) to Apollo v7’s planning module that previously produced incorrect timestamps in planning outputs. The fix ensures temporal consistency required for accurate reconstruction of input frames.
 
 - **`on_lane_planning.cc`**  
-  Slightly modifies planning module execution to record information necessary to reconstruct 
-  planning input frames, avoiding unnecessary state duplication.
+  Introduces a non-intrusive modification to the planning module execution to record ground-truth input frames for reconstruction. In practice, this modification incurs no measurable runtime overhead (0 ms). It is included for presentation purposes only and is not required, as Apollo planning messages already provide this information via the `debug` attribute.
 
 ### Configuration
 - **`planning.conf`**  
-  Disables `trajectory_stitcher` and `reference_line_provider_thread`, which introduce
-  unresolved non-determinism.
+  Disables `trajectory_stitcher` and `reference_line_provider_thread`, which can cause the planning module to produce different outputs during integrated execution despite its deterministic behavior given identical inputs.
 
 ### Protocol Buffers
 - **`planning.proto`**  
-  Adds DeFT-specific protobuf messages designed to **efficiently record information regarding
-  planning inputs** with minimal overhead. These messages are later used to reconstruct
-  planning input frames for testing and validation.
+  Adds DeFT-specific protobuf messages to efficiently record information about planning inputs with minimal overhead. These messages can be used to reconstruct ground truth planning input frames for testing and validation.

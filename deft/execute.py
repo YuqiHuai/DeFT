@@ -6,7 +6,7 @@ from deft.deft_container import DeFTContainer
 
 
 def run_execute(frames_dir: Path, outputs_dir: Path):
-    print("Starting DeFT container...")
+    print('Starting DeFT container...')
     ctn = DeFTContainer(str(Path(CONFIG.APOLLO_ROOT)), 'deft')
 
     if not ctn.is_running():
@@ -17,32 +17,32 @@ def run_execute(frames_dir: Path, outputs_dir: Path):
     if outputs_dir.exists():
         shutil.rmtree(outputs_dir)
 
-    print("Loading testdata into container...")
+    print('Loading testdata into container...')
     ctn.load_testdata(frames_dir)
 
-    print("Running DeFT tests...")
+    print('Running DeFT tests...')
     ctn.deft_run_tests()
 
-    print("Saving outputs...")
+    print('Saving outputs...')
     ctn.save_testdata(outputs_dir)
 
     ctn.stop()
     ctn.remove()
 
-    print(f"Outputs saved to {outputs_dir}")
+    print(f'Outputs saved to {outputs_dir}')
 
 
 def main(parser):
     parser.add_argument(
-        "--frames-dir",
-        default="out/testdata",
-        help="Directory containing extracted frames",
+        '--frames-dir',
+        default='out/testdata',
+        help='Directory containing extracted frames',
     )
 
     parser.add_argument(
-        "--outputs-dir",
-        default="out/testdata_out",
-        help="Directory to store execution outputs",
+        '--outputs-dir',
+        default='out/testdata_out',
+        help='Directory to store execution outputs',
     )
 
     def handler(args):
@@ -50,7 +50,7 @@ def main(parser):
         outputs_dir = Path(args.outputs_dir)
 
         if not frames_dir.exists():
-            parser.error("Frames directory does not exist")
+            parser.error('Frames directory does not exist')
 
         run_execute(frames_dir, outputs_dir)
 
