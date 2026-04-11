@@ -214,7 +214,7 @@ To demonstrate the generalizability of frame-based testing beyond Apollo, we dev
 5. Run DeFT's main algorithm to extract module tests
 
     ```bash
-    poetry run deft extract data/test_scenario.00000
+    poetry run deft extract data/test_scenario_1.00000
     ```
 
     > By default, module tests will be stored under `out/testdata`. These module tests
