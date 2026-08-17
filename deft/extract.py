@@ -3,10 +3,11 @@ from pathlib import Path
 
 from deft.impl.deft_log import DeFTLog
 from deft.impl.deft_heuristic import DeFTHeuristic
+from deft.impl.deft_apollo import DeFTApollo
 
 
 def run_extract(record_path: Path, frames_dir: Path):
-    agent = DeFTLog()
+    agent = DeFTApollo()
 
     print('Extracting frames ...')
     frames = agent.extract_frames(str(record_path))

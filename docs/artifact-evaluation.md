@@ -45,14 +45,14 @@ cd experiments
 Run:
 
 ```bash
-poetry run python rq1_process.py
+uv run python rq1_process.py
 ```
 
 This script:
 
 - Loads planning trajectory distance measurements
 - Computes reproduction counts under different thresholds
-- Prints results corresponding to Table X in the paper
+- Prints results corresponding to Tables 1–3 in the paper
 
 Expected output includes:
 
@@ -80,7 +80,7 @@ cd experiments
 Run:
 
 ```bash
-poetry run python rq2_process.py
+uv run python rq2_process.py
 ```
 
 This script:
@@ -110,7 +110,7 @@ cd experiments
 Run:
 
 ```bash
-poetry run python rq3_process.py
+uv run python rq3_process.py
 ```
 
 This script:

@@ -16,10 +16,6 @@ class DeFTHeuristic(DeFTBase):
     Time-Sensitive Input Search (TISE) heuristics to select, for each input topic,
     the most recent message prior to the sampled time while enforcing temporal
     consistency and monotonicity across frames.
-
-    This design does not require internal instrumentation, making it broadly applicable.
-    However, compared to oracle-assisted implementations, it may be less accurate due
-    to its reliance on heuristic reconstruction.
     """
     def _extract_frames(self):
         planning_messages = self.messages[ApolloTopics.PLANNING]

@@ -4,7 +4,10 @@ This section describes how to reproduce the experimental results reported in our
 
 Our evaluation follows the same workflow described in Section 5 of the paper and consists of generating system-level scenario tests, extracting planning module tests using DeFT, and comparing determinism and efficiency.
 
-DeFT is designed as a general methodology for reconstructing module-level inputs from system-level executions. In our evaluation, we implement DeFT on Apollo and leverage available system metadata (e.g., planning debug information) to improve reconstruction accuracy. This reflects a realistic deployment setting where such metadata is accessible for debugging and validation purposes. As a result, our evaluation characterizes the upper bound of DeFT’s performance under high-fidelity input reconstruction. In settings where such metadata is unavailable, DeFT instead relies on heuristic reconstruction techniques (e.g., TISE), which trade reconstruction accuracy for broader applicability.
+DeFT is designed as a general methodology for reconstructing module-level inputs from system-level executions. 
+In our evaluation, we implement DeFT on Apollo and leverage available metadata to improve reconstruction accuracy. 
+In settings where such metadata is unavailable, DeFT instead relies on heuristic reconstruction techniques which trade 
+reconstruction accuracy for broader applicability.
 
 ---
 
@@ -46,6 +49,7 @@ Denote the executions as:
 
 Record:
 
+- Planning input topics, including routing, chassis, localization, prediction, and traffic-light messages
 - Planning module outputs (`/apollo/planning`)
 - System-level outcomes (e.g., collision or no collision)
 
@@ -70,8 +74,12 @@ From the initial execution `S0`:
    - Produce deterministic module tests
 
 ```bash
-poetry run python extract_and_execute.py
+uv run deft extract XXX
+uv run deft execute
 ```
+
+The extraction command currently defaults to `DeFTApollo`, which combines Apollo-provided planning
+metadata with TISE for identifiers that are unavailable in that metadata.
 
 Each system-level scenario produces multiple planning module tests,
 each corresponding to one planning execution frame.
@@ -112,9 +120,9 @@ In our results:
 
 - System-level reruns reproduced 85.71%–90.88% of failures per run.
 - Only 471 failures (71.58%) were deterministic across all reruns.
-- DeFT deterministically reproduce planning trajectories from all 658 failures across all reruns.
+- DeFT deterministically reproduces planning trajectories from all 658 failures across all reruns.
 
-This confirms that DeFT eliminates flakiness in planning-level testing.
+This confirms that DeFT eliminates flakiness in the extracted planning-module tests.
 
 ---
 

@@ -41,7 +41,12 @@ are not required for module tests to be extracted.
   Applies a [bug fix](https://github.com/ApolloAuto/apollo/commit/9c764ed81b06f6935e658122e6b5cb507fce265e) to Apollo v7’s planning module that previously produced incorrect timestamps in planning outputs. The fix ensures temporal consistency required for accurate reconstruction of input frames.
 
 - **`on_lane_planning.cc`**  
-  Introduces a non-intrusive modification to the planning module execution to record ground-truth input frames for reconstruction. In practice, this modification incurs no measurable runtime overhead (0 ms). It is included for presentation purposes only and is not required, as Apollo planning messages already provide this information via the `debug` attribute.
+  Adds instrumentation for validation purpose that records the complete ground-truth input frame. This
+  instrumentation is used to validate reconstruction and is not part of the DeFT extraction algorithm.
+  Apollo's standard planning debug output provides the frame timing and several, but not all, input
+  identifiers. `DeFTApollo` uses TISE to reconstruct missing identifiers such as the traffic-light
+  message. The ground-truth instrumentation is not required to extract module tests and incurs no
+  measurable runtime overhead in our measurements (0 ms).
 
 ### Configuration
 - **`planning.conf`**  
@@ -49,4 +54,5 @@ are not required for module tests to be extracted.
 
 ### Protocol Buffers
 - **`planning.proto`**  
-  Adds DeFT-specific protobuf messages to efficiently record information about planning inputs with minimal overhead. These messages can be used to reconstruct ground truth planning input frames for testing and validation.
+  Adds DeFT-specific protobuf fields that encode the complete input identifiers for evaluation. These
+  fields provide ground truth for testing and validating reconstruction approaches.

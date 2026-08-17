@@ -7,9 +7,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-YuqiHuai%2FDeFT-black?logo=github&style=flat-square)](https://github.com/YuqiHuai/DeFT)
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC--BY--4.0-lightgrey.svg?style=flat-square)](https://creativecommons.org/licenses/by/4.0/)
 
-This repository corresponds to the ICSE 2026 Research Track paper and its accompanying artifact, DeFT, a tool and methodology designed to improve testing reliability in autonomous driving systems by addressing non-determinism in planning tests. Traditional system-level scenario tests often produce varying outcomes, making failure reproduction and debugging challenging. DeFT is a methodology that converts non-deterministic system-level scenario tests into deterministic module-level tests by extracting and reconstructing planning module inputs and expected outputs from messages exchanged on the message bus.
-
-**TL;DR**: System-level scenario tests for ADSes are often non-deterministic due to asynchronous module interactions, even though the planning module itself is deterministic given identical inputs. DeFT describes a general methodology for transforming a single system-level scenario test into multiple module-level tests by isolating and reconstructing the planning module’s execution context. When accurate inputs are extracted and reconstructed, module-level tests can reproduce planning trajectories and reliably reproduce failures observed during system-level execution.
+This repository corresponds to the ICSE 2026 Research Track paper and its accompanying artifact, DeFT, a methodology that complements scenario-based testing by turning non-deterministic system-level scenario-based test executions into deterministic module-level frame-based tests, enabling precise reproduction of executions and failures observed in realistic simulations. For more details, see the [camera-ready paper](publication/ICSE_2026_DeFT.pdf) and the accompanying [presentation](publication/1645_Huai_DeFT.pdf).
 
 ---
 
@@ -44,7 +42,7 @@ To run **DeFT** and reproduce the experimental results, the following environmen
 - **NVIDIA Container Toolkit** (for GPU acceleration inside Docker)
 
 ### Python Environment
-- **Python Poetry** (dependency management and virtual environments)
+- **uv** (dependency management and virtual environments)
 
 ---
 
@@ -96,31 +94,36 @@ module, write extracted module tests to files, and running relevant scripts to e
 This repository includes multiple implementations of DeFT that reflect different tradeoffs between
 generality, efficiency, and required inputs.
 
-The DeFT methodology described in the paper is a general approach for reconstructing planning module
-inputs from system-level executions without relying on internal instrumentation. In practice, however,
-different implementations may leverage available information to improve reconstruction accuracy and
-performance.
+The DeFT methodology described in the paper reconstructs planning module inputs from system-level
+executions without requiring internal instrumentation. Implementations may use metadata already
+published by a target ADS to reduce the candidate search. Such metadata is an optimization: generic
+TISE can reconstruct an output-reproducing frame without it, although identifying the exact historical
+frame may require more search.
+
+- **DeFTLast (baseline)**  
+  A heuristic-based implementation that reconstructs planning inputs using message timestamps and
+  the "latest-before-time" strategy. This metadata-free baseline is a simpler approximation of TISE.
+  This is the initial implementation of DeFT and in practice we observe input frames reconstructed
+  by this baseline approach leads to many unexpected Apollo planning module errors due to incorrect
+  frame construction time.
+
+- **DeFTLog (ground-truth reader)**
+  An evaluation utility that reads instrumented `msg.deft.*` fields containing the actual input identifiers
+  observed during execution. These fields are used only as ground truth for validating planner determinism;
+  they are not consumed by `DeFTApollo` and are not required by DeFT.
 
 - **DeFTHeuristic (TISE-based)**  
   A heuristic-based implementation that reconstructs planning inputs using Time-Sensitive Input Search (TISE). 
   This variant estimates frame creation times and selects input messages based on temporal proximity and 
-  consistency heuristics. It does not rely on system-specific metadata and represents a fully general 
-  realization of the DeFT methodology, but may introduce approximation error compared to metadata-assisted approaches.
+  consistency heuristics. It does not rely on system-specific metadata and represents the metadata-free
+  realization of the DeFT methodology that produced deterministic module tests.
 
 - **DeFTApollo (Apollo-optimized)**  
-  An implementation that leverages Apollo's planning debug metadata (e.g., header sequence numbers) to 
-  directly recover most input messages. This reduces the need for search and improves efficiency and 
-  determinism, but depends on system-specific features.
-
-- **DeFTLast (baseline)**  
-  A heuristic-based implementation that reconstructs planning inputs using message timestamps and
-  the "latest-before-time" strategy. This variant does not rely on system-specific metadata and most
-  closely follows the general DeFT design described in the paper.
-
-- **DeFTLog (presentation)**  
-  A variant that reconstructs frames directly from enriched logs containing pre-recorded DeFT metadata.
-  This approach is fully deterministic and efficient but requires such metadata to be available (e.g., 
-  by rerunning system-level tests with the DeFT-enabled Apollo used in our evaluation)
+  The implementation used by the default CLI. It uses metadata present in Apollo planning outputs
+  to infer the frame creation time and identify the routing, chassis, localization, and prediction
+  messages. Since the metadata does not expose every required identifier, this implementation applies TISE to
+  reconstruct traffic-light messages. The metadata reduces search cost and ambiguity but is not required for
+  reconstruction correctness.
 
 ### `plot_frame`
 
@@ -211,13 +214,13 @@ To demonstrate the generalizability of frame-based testing beyond Apollo, we dev
 4. Install DeFT's dependencies
 
     ```bash
-    poetry install
+    uv sync
     ```
 
 5. Run DeFT's main algorithm to extract module tests
 
     ```bash
-    poetry run deft extract data/test_scenario_1.00000
+    uv run deft extract data/test_scenario_1.00000
     ```
 
     > By default, module tests will be stored under `out/testdata`. These module tests
@@ -227,7 +230,7 @@ To demonstrate the generalizability of frame-based testing beyond Apollo, we dev
 6. Run DeFT's main algorithm to execute module tests
 
     ```bash
-    poetry run deft execute
+    uv run deft execute
     ```
 
     > Module tests extracted from the previous step under `out/testdata` are loaded into 
@@ -238,7 +241,7 @@ To demonstrate the generalizability of frame-based testing beyond Apollo, we dev
 7. Run validation script to verify accuracy of reproduced planning trajectories
 
     ```bash
-    poetry run deft validate
+    uv run deft validate
     ```
 
     > This script also converts `deft.bin` (actual planning module output) and `planning.bin`
@@ -253,7 +256,7 @@ To demonstrate the generalizability of frame-based testing beyond Apollo, we dev
     Avg reproduce error: 1.49607024122015e-07
     ```
 
-    Which indicates DeFT successfully reproduced the 305 planning module outputs that were recorded in the sample scenario with a maximum error of 1.49607024122015e-07.
+    Which indicates DeFT successfully reproduced the 305 planning module outputs that were recorded in the sample scenario with a maximum error of 4.560464412474593e-05 and an average error of 1.49607024122015e-07.
 
     Repeated execution of the above steps produces identical outputs, demonstrating the deterministic nature of the extracted module tests.
 

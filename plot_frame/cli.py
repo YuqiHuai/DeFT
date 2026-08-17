@@ -160,15 +160,15 @@ def main():
 
 
     # plot ego planning trajectory
-    planning_trajectory = ADCTrajectory()
-    with open(frame_dir / 'deft.bin', 'rb') as f:
-        planning_trajectory.ParseFromString(f.read())
+    # planning_trajectory = ADCTrajectory()
+    # with open(frame_dir / 'deft.bin', 'rb') as f:
+    #     planning_trajectory.ParseFromString(f.read())
     
-    pxes, pyes = [], []
-    for trajectory_point in planning_trajectory.trajectory_point:
-        pxes.append(trajectory_point.path_point.x)
-        pyes.append(trajectory_point.path_point.y)
-    plt.plot(pxes, pyes, color='red', linewidth=2, label='Planned Trajectory', zorder=5)
+    # pxes, pyes = [], []
+    # for trajectory_point in planning_trajectory.trajectory_point:
+    #     pxes.append(trajectory_point.path_point.x)
+    #     pyes.append(trajectory_point.path_point.y)
+    # plt.plot(pxes, pyes, color='red', linewidth=2, label='Planned Trajectory', zorder=5)
     
     # plot obstacles
     prediction_obstacles = PredictionObstacles()
