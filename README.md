@@ -168,7 +168,7 @@ Use this when setting up new map datasets.
 Sets the active HD map used by Apollo.
 
 - Updates `global_flagfile.txt`
-- Configures `--map_dir` for Apollo
+- Configures `--map_dir` for Apollo (replacing any previously configured map)
 
 Example:
 
@@ -177,7 +177,9 @@ bash scripts/set_hd_map.sh sunnyvale_loop
 ```
 
 Use this before running Apollo or oracle analysis to ensure
-the correct map is selected.
+the correct map is selected. `deft execute` performs the same configuration
+automatically using the map detected from the record, so this script is only
+needed for workflows that do not go through the DeFT CLI.
 
 ### `examples/deft_autoware`
 
@@ -205,11 +207,15 @@ To demonstrate the generalizability of frame-based testing beyond Apollo, we dev
     bash scripts/install_hd_maps.sh
     ```
 
-3. Specify HD Map to be used by Apollo
+3. *(Optional)* Specify HD Map to be used by Apollo
 
     ```bash
     bash scripts/set_hd_map.sh sunnyvale_loop
     ```
+
+    > This step is optional: `deft extract` detects the HD map from the record and
+    > `deft execute` configures Apollo accordingly. Run this only to pin a map
+    > explicitly, or when using Apollo outside of the DeFT CLI.
 
 4. Install DeFT's dependencies
 
@@ -223,6 +229,9 @@ To demonstrate the generalizability of frame-based testing beyond Apollo, we dev
     uv run deft extract data/test_scenario_1.00000
     ```
 
+    > The HD map used by the record is detected and recorded in
+    > `out/testdata/deft_meta.json`. Pass `--map <name>` to override it.
+
     > By default, module tests will be stored under `out/testdata`. These module tests
     > represent input and expected output pairs for the planning module in protobuf
     > binary file format.
@@ -233,7 +242,9 @@ To demonstrate the generalizability of frame-based testing beyond Apollo, we dev
     uv run deft execute
     ```
 
-    > Module tests extracted from the previous step under `out/testdata` are loaded into 
+    > Apollo is first configured with the HD map recorded during extraction
+    > (`--map <name>` overrides it, `--no-set-map` leaves the current configuration
+    > untouched). Module tests extracted from the previous step under `out/testdata` are loaded into 
     > DeFT-Apollo container and executed using an dedicated module test execution entry 
     > point. After processing, all actual outputs of the planning module are
     > stored under `out/testdata_out/{test_index}/deft.bin`.

@@ -6,6 +6,7 @@ class ApolloTopics:
     TRAFFIC_LIGHT = '/apollo/perception/traffic_light'
     PLANNING = '/apollo/planning'
     STORIES = '/apollo/storytelling'
+    HMI_STATUS = '/apollo/hmi/status'
 
 
 PLANNING_INPUT_TOPICS = [

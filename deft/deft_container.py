@@ -1,9 +1,16 @@
 import os
 import subprocess
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import docker
+
+from deft.map_config import (
+    get_apollo_map,
+    installed_maps,
+    map_data_dir,
+    set_apollo_map,
+)
 
 
 class DeFTContainer:
@@ -67,19 +74,48 @@ class DeFTContainer:
         except docker.errors.NotFound:
             return None
 
+    @property
+    def map_data_dir(self) -> Path:
+        """
+        Get the directory holding the HD maps installed into Apollo.
+
+        Returns:
+            Path: The map data directory.
+        """
+        return map_data_dir(self.apollo_dir)
+
+    def installed_maps(self) -> List[str]:
+        """
+        List the HD maps installed into Apollo.
+
+        Returns:
+            List[str]: Names of the installed maps.
+        """
+        return installed_maps(self.apollo_dir)
+
+    def get_map(self) -> Optional[str]:
+        """
+        Get the HD map Apollo is currently configured to use.
+
+        Returns:
+            Optional[str]: The map name, or None when no map is configured.
+        """
+        return get_apollo_map(self.apollo_dir)
+
     def set_map(self, map_name: str):
         """
         Set the map directory for the DeFT container.
 
+        Any previously configured map directory is replaced, so that repeated
+        calls do not accumulate conflicting flags in the flagfile.
+
         Args:
             map_name (str): The name of the map to set.
+
+        Raises:
+            FileNotFoundError: If Apollo or the requested map is not installed.
         """
-        flagfile = Path(
-            self.apollo_dir, 'modules', 'common', 'data', 'global_flagfile.txt'
-        )
-        new_line = f'--map_dir=/apollo/modules/map/data/{map_name}'
-        with open(flagfile, 'a') as fp:
-            fp.write('\n' + new_line + '\n')
+        set_apollo_map(self.apollo_dir, map_name)
 
     def is_running(self) -> bool:
         """

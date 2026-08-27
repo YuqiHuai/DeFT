@@ -32,8 +32,15 @@ poetry install
 Run using Poetry:
 
 ```bash
-poetry run apollo_resim <src_record> <dst_record> -m <map_name>
+poetry run apollo_resim <src_record> <dst_record> [-m <map_name>]
 ```
+
+When `-m/--map` is omitted, the HD map is detected from the source record's
+routing response.
+
+Either way, Apollo's `--map_dir` is configured with the selected map before the
+container is started, and the map is copied into `apollo-7.0.0/modules/map/data`
+if it is not installed yet.
 
 ---
 
@@ -57,11 +64,11 @@ poetry run apollo_resim \
 
 ---
 
-## Required Options
+## Options
 
 | Option | Description |
 |--------|------------|
-| `-m, --map` | Map name under `data/maps/<map_name>` |
+| `-m, --map` | Map name under `data/maps/<map_name>`. Detected from the source record when omitted. |
 
 Example expected directory layout:
 
@@ -96,6 +103,7 @@ apollo_resim.re_simulate(...)
 
 Which:
 
+- Configures Apollo's HD map (`--map_dir`)
 - Starts an Apollo Docker container
 - Launches Dreamview
 - Initializes simulation control

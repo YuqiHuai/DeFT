@@ -37,8 +37,14 @@ if [[ ! -d "$MAP_PATH" ]]; then
 fi
 
 # ---- set HD map ----
+# Drop any previously configured map so repeated runs do not pile up
+# conflicting --map_dir flags in the flagfile.
+TMP_FLAGFILE="$(mktemp)"
+grep -v -- '^[[:space:]]*--map_dir=' "$FLAGFILE" > "$TMP_FLAGFILE"
 printf "\n--map_dir=/apollo/modules/map/data/%s\n" "$MAP_NAME" \
-  >> "$FLAGFILE"
+  >> "$TMP_FLAGFILE"
+cat "$TMP_FLAGFILE" > "$FLAGFILE"
+rm -f "$TMP_FLAGFILE"
 
 echo -e "${GREEN}HD map set successfully:${NC}"
 echo "  --map_dir=/apollo/modules/map/data/$MAP_NAME"

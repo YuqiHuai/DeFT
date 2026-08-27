@@ -2,6 +2,7 @@ import argparse
 
 from rich_argparse import RichHelpFormatter
 
+from deft.detect import main as detect_main
 from deft.execute import main as execute_main
 from deft.extract import main as extract_main
 from deft.validate import main as validate_main
@@ -26,6 +27,12 @@ def main():
         'execute', help='Execute extracted module tests'
     )
     execute_main(execute_parser)
+
+    # Detect map command
+    detect_parser = subparsers.add_parser(
+        'detect-map', help='Detect the HD map used by a scenario record'
+    )
+    detect_main(detect_parser)
 
     # Validate command
     validate_parser = subparsers.add_parser(
