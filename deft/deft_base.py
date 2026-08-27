@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import Dict, List
 
 from cyber_record.record import Record
 
@@ -77,17 +77,24 @@ class DeFTBase:
             if topic == ApolloTopics.ROUTING_RESPONSE:
                 start_loading = True
 
-            if not start_loading:
-                continue
+            if topic == ApolloTopics.PLANNING:
+                # Frames are derived from planning outputs, so only accept
+                # those belonging to the current route and reporting a real
+                # decision.
+                if not start_loading:
+                    continue
 
-            if (
-                topic == ApolloTopics.PLANNING
-                and not msg.decision.main_decision.HasField('not_ready')
-            ):
-                skip_planning = False
+                if not msg.decision.main_decision.HasField('not_ready'):
+                    skip_planning = False
 
-            if topic == ApolloTopics.PLANNING and skip_planning:
-                continue
+                if skip_planning:
+                    continue
+
+            # Planning inputs are kept regardless of when they were published.
+            # The first planning frames of a route routinely reference chassis
+            # and localization messages recorded microseconds *before* the
+            # routing response; discarding those left those frames with empty
+            # inputs and made them unreproducible.
 
             if topic not in self.messages:
                 self.messages[topic] = dict()
@@ -138,6 +145,11 @@ class DeFTBase:
             write_binary (bool): Whether to write binary files.
             write_ascii (bool): Whether to write ASCII files.
         """
+        # Frame indices that had to fall back to an empty input message even
+        # though the topic was recorded. Such frames cannot reproduce the
+        # recorded planning output, so they are reported to the caller.
+        missing_inputs: Dict[str, List[int]] = dict()
+
         for index, frame in enumerate(frames):
             target_dir = Path(testdata_dir, str(index))
             target_dir.mkdir(parents=True)
@@ -145,17 +157,21 @@ class DeFTBase:
                 msg_sequence_num = frame.get_sequence_number_for_topic(
                     planning_input_topic
                 )
+                topic_short_name = get_topic_short_name(planning_input_topic)
+                topic_messages = self.messages.get(planning_input_topic)
 
                 # check if input topic is tracked
-                if (planning_input_topic not in self.messages) or (
-                    msg_sequence_num not in self.messages[planning_input_topic]
-                ):
+                if topic_messages is None:
+                    # The topic is absent from the whole record, which is a
+                    # property of the scenario rather than lost input data.
                     msg = get_empty_message(planning_input_topic)
+                elif msg_sequence_num not in topic_messages:
+                    # The topic was recorded but the message this frame refers
+                    # to was not retained: the frame loses real input data.
+                    msg = get_empty_message(planning_input_topic)
+                    missing_inputs.setdefault(topic_short_name, []).append(index)
                 else:
-                    msg, _ = self.messages[planning_input_topic][
-                        frame.get_sequence_number_for_topic(planning_input_topic)
-                    ]
-                topic_short_name = get_topic_short_name(planning_input_topic)
+                    msg, _ = topic_messages[msg_sequence_num]
 
                 if write_binary:
                     with open(Path(target_dir, f'{topic_short_name}.bin'), 'wb') as fp:
@@ -184,3 +200,33 @@ class DeFTBase:
             if write_ascii:
                 with open(Path(target_dir, 'header.pb.txt'), 'w') as fp:
                     fp.write(str(deft_header))
+
+        self._warn_about_missing_inputs(missing_inputs, len(frames))
+
+    @staticmethod
+    def _warn_about_missing_inputs(
+        missing_inputs: Dict[str, List[int]], num_frames: int
+    ):
+        """
+        Report frames that were written with empty planning inputs.
+
+        Args:
+            missing_inputs (Dict[str, List[int]]): Frame indices per input
+                topic that fell back to an empty message.
+            num_frames (int): Total number of frames written.
+        """
+        if not missing_inputs:
+            return
+
+        affected = sorted({i for indices in missing_inputs.values() for i in indices})
+        print(
+            f'WARNING: {len(affected)} of {num_frames} frames were written with '
+            'empty planning inputs and will not reproduce the recorded planning '
+            'output:'
+        )
+        for topic_short_name in sorted(missing_inputs):
+            indices = missing_inputs[topic_short_name]
+            shown = ', '.join(str(i) for i in indices[:10])
+            if len(indices) > 10:
+                shown += f', ... (+{len(indices) - 10} more)'
+            print(f'    {topic_short_name:<14}: {len(indices)} frame(s) [{shown}]')
