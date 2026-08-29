@@ -2,6 +2,7 @@ import argparse
 
 from rich_argparse import RichHelpFormatter
 
+from deft.coverage import main as coverage_main
 from deft.detect import main as detect_main
 from deft.execute import main as execute_main
 from deft.extract import main as extract_main
@@ -33,6 +34,12 @@ def main():
         'detect-map', help='Detect the HD map used by a scenario record'
     )
     detect_main(detect_parser)
+
+    # Coverage command
+    coverage_parser = subparsers.add_parser(
+        'coverage', help='Compute planning coverage of extracted module tests'
+    )
+    coverage_main(coverage_parser)
 
     # Validate command
     validate_parser = subparsers.add_parser(

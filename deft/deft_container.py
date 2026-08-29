@@ -283,9 +283,9 @@ class DeFTContainer:
             else:
                 subprocess.run(command, check=True, env=my_env)
         except subprocess.CalledProcessError as e:
+            stderr = e.stderr.decode().strip() if e.stderr else ''
             raise Exception(
-                f'Command failed with exit code {e.returncode}: '
-                f'{e.stderr.decode().strip()}'
+                f'Command failed with exit code {e.returncode}: {stderr}'
             )
 
     def deft_run_tests(self, show_container_output=False):

@@ -271,6 +271,45 @@ To demonstrate the generalizability of frame-based testing beyond Apollo, we dev
 
     Repeated execution of the above steps produces identical outputs, demonstrating the deterministic nature of the extracted module tests.
 
+8. *(Optional)* Measure the planning code coverage achieved by the module tests
+
+    ```bash
+    uv run deft coverage
+    ```
+
+    > Module tests under `out/testdata` are loaded into the DeFT-Apollo container and
+    > executed under `bazel coverage`, with instrumentation limited to
+    > `//modules/planning`. The resulting LCOV data is rendered with `genhtml` and
+    > copied back to `out/coverage`; open `out/coverage/index.html` in a browser to
+    > browse line and function coverage of the planning module.
+
+    The expected output of the command ends with
+
+    ```text
+    Coverage report saved to out/coverage/index.html
+    ```
+
+    For the sample scenario, the report summarizes the planning module coverage as
+
+    ```text
+    lines......: 17.6% (6737 of 38325 lines)
+    functions..: 38.8% (1338 of 3451 functions)
+    ```
+
+    > The first run compiles an instrumented build of the planning module and
+    > therefore takes considerably longer than `deft execute`. Pass
+    > `--show-container-output` to follow the Bazel and `genhtml` output, and
+    > `--keep-container` to reuse the container across runs. As with `deft execute`,
+    > the HD map recorded during extraction is configured automatically
+    > (`--map <name>` overrides it, `--no-set-map` leaves it untouched).
+    > Use `--frames-dir` / `--report-dir` to point at a different set of module
+    > tests or report location, for example when covering several scenarios:
+    >
+    > ```bash
+    > uv run deft extract data/test_scenario_2.00000 --frames-dir out/testdata_s2
+    > uv run deft coverage --frames-dir out/testdata_s2 --report-dir out/coverage_s2
+    > ```
+
 ---
 
 ## Artifact Evaluation

@@ -21,7 +21,7 @@ class DeFTLog(DeFTBase):
         for psn in planning_sequence_numbers:
             msg, t = planning_messages[psn]
             frame = Frame(
-                round(msg.deft.start_timestamp, 4),
+                msg.deft.start_timestamp,
                 msg.header.sequence_num,
                 msg.deft.routing_header,
                 msg.deft.chassis_header,
