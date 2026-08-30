@@ -19,6 +19,7 @@ import json
 import re
 import shutil
 import subprocess
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -34,6 +35,118 @@ from deft.extract import IMPLEMENTATIONS, run_extract
 from deft.planning_flags import parse_flag
 
 DEFAULT_GLOB = '*.00000'
+
+#: Where scripts/provision_workers.sh puts the per-worker Apollo checkouts.
+DEFAULT_WORKER_ROOT = Path(CONFIG.PROJECT_ROOT).parent / 'deft-apollo-workers'
+
+
+def worker_apollo(worker_root: Path, index: int) -> Path:
+    """The Apollo checkout belonging to one worker.
+
+    Args:
+        worker_root (Path): Directory holding the per-worker checkouts.
+        index (int): Zero-based worker index.
+
+    Returns:
+        The checkout path.
+    """
+    return Path(worker_root) / f'apollo-7.0.0-w{index + 1:02d}'
+
+
+def worker_user(index: int) -> str:
+    """The container user for one worker, which also names its container.
+
+    Zero-padded because Apollo's docker/scripts/docker_base.sh matches
+    container names by substring, so deft_w1 would also match deft_w10.
+
+    Args:
+        index (int): Zero-based worker index.
+
+    Returns:
+        The user name.
+    """
+    return f'deft_w{index + 1:02d}'
+
+
+def _cover_shard(
+    records: List[Path],
+    directory: Path,
+    records_out: Path,
+    frames_root: Path,
+    apollo_root: Optional[Path],
+    user: str,
+    tag: str,
+    options: dict,
+):
+    """Cover one worker's share of a technique's records, serially.
+
+    Run in its own process when covering in parallel. Each worker owns an
+    Apollo checkout for the duration: /apollo is a bind mount and a run
+    rewrites the planning configuration inside it, so sharing one would let
+    workers overwrite each other mid-run.
+
+    Args:
+        records (List[Path]): This worker's records.
+        directory (Path): The technique directory they came from.
+        records_out (Path): Where per-record tracefiles go.
+        frames_root (Path): Scratch root for extracted module tests.
+        apollo_root (Optional[Path]): This worker's Apollo checkout.
+        user (str): This worker's container user.
+        tag (str): Prefix for progress lines.
+        options (dict): map_name, set_map, impl, flags, force,
+            show_container_output.
+
+    Returns:
+        A ``(tracefiles, failures)`` pair.
+    """
+    tracefiles: List[Path] = []
+    failures: List[str] = []
+
+    for i, record in enumerate(records, start=1):
+        key = record_key(directory, record)
+        tracefile = records_out / f'{key}.dat'
+        label = f'{tag} ({i}/{len(records)}) {key}'
+
+        if tracefile.exists() and not options['force']:
+            print(f'{label}: reusing existing tracefile', flush=True)
+            tracefiles.append(tracefile)
+            continue
+
+        print(f'{label}: extracting and covering', flush=True)
+        frames_dir = frames_root / key
+        try:
+            run_extract(
+                record, frames_dir,
+                map_name=options['map_name'], impl=options['impl'],
+            )
+            run_coverage(
+                frames_dir,
+                records_out.parent / 'unused_report',
+                map_name=options['map_name'],
+                set_map=options['set_map'],
+                # The container is reused across this worker's records and
+                # stopped once the whole batch is done.
+                keep_container=True,
+                show_container_output=options['show_container_output'],
+                flags=options['flags'],
+                lcov_path=tracefile,
+                save_report=False,
+                apollo_root=apollo_root,
+                user=user,
+            )
+            tracefiles.append(tracefile)
+        except (Exception, SystemExit) as e:  # noqa: BLE001 - one bad record,
+            # including one whose counters came out corrupt, must not abandon a
+            # batch that may take hours.
+            print(f'{label}: FAILED: {e}', flush=True)
+            failures.append(f'{record.name}: {e}')
+            # A rejected tracefile must not survive to be reused as a completed
+            # record by the next run, nor unioned into the total.
+            tracefile.unlink(missing_ok=True)
+        finally:
+            shutil.rmtree(frames_dir, ignore_errors=True)
+
+    return tracefiles, failures
 
 # `lcov --summary` renders one of these per metric, or "no data found" when the
 # tracefile carries nothing for it.
@@ -238,6 +351,8 @@ def run_coverage_batch(
     limit: Optional[int] = None,
     keep_container: bool = False,
     show_container_output: bool = False,
+    workers: int = 1,
+    worker_root: Optional[Path] = None,
 ) -> List[TechniqueResult]:
     """
     Compute cumulative planning coverage for each configured directory.
@@ -257,10 +372,29 @@ def run_coverage_batch(
             for quickly trying a configuration out before running it in full.
         keep_container (bool): Leave the container running at the end.
         show_container_output (bool): Show container output for each run.
+        workers (int): How many records to cover at once. Each worker needs its
+            own Apollo checkout under worker_root, because /apollo is a bind
+            mount whose planning configuration a run rewrites, and which holds
+            the Bazel output base the test writes coverage data to.
+        worker_root (Optional[Path]): Directory holding those checkouts.
 
     Returns:
         List[TechniqueResult]: What each technique's records covered.
     """
+    worker_root = Path(worker_root or DEFAULT_WORKER_ROOT)
+    if workers > 1:
+        missing = [
+            str(worker_apollo(worker_root, i))
+            for i in range(workers)
+            if not worker_apollo(worker_root, i).is_dir()
+        ]
+        if missing:
+            raise SystemExit(
+                'Missing Apollo checkout(s) for parallel workers:\n  '
+                + '\n  '.join(missing)
+                + f'\nRun: scripts/provision_workers.sh --workers {workers}'
+            )
+
     results = []
 
     total_records = sum(
@@ -288,46 +422,41 @@ def run_coverage_batch(
         records_out = technique_out / 'records'
         records_out.mkdir(parents=True, exist_ok=True)
 
-        for record in records:
-            completed += 1
-            key = record_key(technique.directory, record)
-            tracefile = records_out / f'{key}.dat'
-            label = f'({completed}/{total_records}) {technique.name}/{key}'
+        completed += len(records)
+        options = {
+            'map_name': map_name, 'set_map': set_map, 'impl': impl,
+            'flags': flags, 'force': force,
+            'show_container_output': show_container_output,
+        }
+        frames_root = work_dir / technique.slug
 
-            if tracefile.exists() and not force:
-                print(f'{label}: reusing existing tracefile')
-                result.tracefiles.append(tracefile)
-                continue
-
-            print(f'{label}: extracting and covering')
-            frames_dir = work_dir / technique.slug / key
-
-            try:
-                run_extract(record, frames_dir, map_name=map_name, impl=impl)
-                run_coverage(
-                    frames_dir,
-                    technique_out / 'unused_report',
-                    map_name=map_name,
-                    set_map=set_map,
-                    # The container is reused across every record and stopped
-                    # once the whole batch is done.
-                    keep_container=True,
-                    show_container_output=show_container_output,
-                    flags=flags,
-                    lcov_path=tracefile,
-                    save_report=False,
-                )
-                result.tracefiles.append(tracefile)
-            except (Exception, SystemExit) as e:  # noqa: BLE001 - one bad
-                # record, including one whose counters came out corrupt, must
-                # not abandon a batch that may take hours.
-                print(f'{label}: FAILED: {e}')
-                result.failures.append(f'{record.name}: {e}')
-                # A rejected tracefile must not survive to be reused as a
-                # completed record by the next run, nor unioned into the total.
-                tracefile.unlink(missing_ok=True)
-            finally:
-                shutil.rmtree(frames_dir, ignore_errors=True)
+        if workers <= 1:
+            tracefiles, failures = _cover_shard(
+                records, technique.directory, records_out, frames_root,
+                None, 'deft', f'[{technique.name}]', options,
+            )
+            result.tracefiles.extend(tracefiles)
+            result.failures.extend(failures)
+        else:
+            # Strided rather than blocked, so the mix of cheap and expensive
+            # records lands evenly: cost tracks a record's frame count, which
+            # varies several-fold.
+            shards = [records[i::workers] for i in range(workers)]
+            with ProcessPoolExecutor(max_workers=workers) as pool:
+                futures = [
+                    pool.submit(
+                        _cover_shard, shard, technique.directory, records_out,
+                        frames_root / f'w{i + 1:02d}',
+                        worker_apollo(worker_root, i), worker_user(i),
+                        f'[{technique.name} w{i + 1:02d}]', options,
+                    )
+                    for i, shard in enumerate(shards) if shard
+                ]
+                for future in futures:
+                    tracefiles, failures = future.result()
+                    result.tracefiles.extend(tracefiles)
+                    result.failures.extend(failures)
+            result.tracefiles.sort()
 
         cumulative = technique_out / 'cumulative.dat'
         if union_tracefiles(result.tracefiles, cumulative):
@@ -336,11 +465,17 @@ def run_coverage_batch(
             render_cumulative(cumulative, technique_out / 'genhtml')
 
     if not keep_container:
-        ctn = DeFTContainer(str(Path(CONFIG.APOLLO_ROOT)), 'deft')
-        if ctn.is_running():
-            print('Stopping DeFT container...')
-            ctn.stop()
-            ctn.remove()
+        used = (
+            [(Path(CONFIG.APOLLO_ROOT), 'deft')] if workers <= 1
+            else [(worker_apollo(worker_root, i), worker_user(i))
+                  for i in range(workers)]
+        )
+        for apollo_root, user in used:
+            ctn = DeFTContainer(str(apollo_root), user)
+            if ctn.is_running():
+                print(f'Stopping DeFT container {ctn.container_name}...')
+                ctn.stop()
+                ctn.remove()
 
     return results
 
@@ -566,6 +701,22 @@ def main(parser):
     )
 
     parser.add_argument(
+        '--workers',
+        type=int,
+        default=1,
+        help='How many records to cover at once. Each worker needs its own '
+        'Apollo checkout (scripts/provision_workers.sh), because /apollo is a '
+        'bind mount whose planning configuration a run rewrites',
+    )
+
+    parser.add_argument(
+        '--worker-root',
+        default=None,
+        help='Directory holding the per-worker Apollo checkouts '
+        f'(default: {DEFAULT_WORKER_ROOT})',
+    )
+
+    parser.add_argument(
         '--keep-container',
         action='store_true',
         help='Leave the DeFT container running after the batch finishes',
@@ -623,6 +774,8 @@ def main(parser):
             limit=args.limit,
             keep_container=args.keep_container,
             show_container_output=args.show_container_output,
+            workers=args.workers,
+            worker_root=Path(args.worker_root) if args.worker_root else None,
         )
         report(results, out_dir)
 
