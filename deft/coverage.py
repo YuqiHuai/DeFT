@@ -66,6 +66,8 @@ def run_coverage(
     flags: Optional[Dict[str, str]] = None,
     lcov_path: Optional[Path] = None,
     save_report: bool = True,
+    apollo_root: Optional[Path] = None,
+    user: str = 'deft',
 ):
     """
     Compute planning code coverage of extracted module tests.
@@ -94,8 +96,19 @@ def run_coverage(
         save_report (bool): Whether to copy the HTML rendering out of the
             container. Batch runs over many records only need the tracefiles,
             and copying a report per record costs far more than producing one.
+        apollo_root (Optional[Path]): The Apollo checkout to run against,
+            defaulting to the one installed beside this project. Workers run
+            concurrently only if each has its own checkout: /apollo is a bind
+            mount, and a run rewrites planning.conf, the scenario textprotos
+            and the HD-map flagfile inside it, besides holding the Bazel
+            output base the test writes its coverage data to.
+        user (str): Container user, which also names the container
+            (apollo_dev_<user>) and its in-container work directory. Give
+            concurrent workers distinct names, zero-padded: Apollo's
+            docker_base.sh matches container names by substring, so w1 would
+            also match w10.
     """
-    ctn = DeFTContainer(str(Path(CONFIG.APOLLO_ROOT)), 'deft')
+    ctn = DeFTContainer(str(Path(apollo_root or CONFIG.APOLLO_ROOT)), user)
 
     if set_map:
         resolved_map = resolve_map_name(frames_dir, map_name)
@@ -140,7 +153,7 @@ def run_coverage(
             're-run with --show-container-output to see what went wrong.'
         )
 
-    corrupt = find_corrupt_sources(tracefile, Path(CONFIG.APOLLO_ROOT))
+    corrupt = find_corrupt_sources(tracefile, Path(apollo_root or CONFIG.APOLLO_ROOT))
     if corrupt:
         shown = '\n  '.join(corrupt[:5])
         more = f'\n  ... and {len(corrupt) - 5} more' if len(corrupt) > 5 else ''
