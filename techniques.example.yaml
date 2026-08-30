@@ -1,0 +1,25 @@
+# Named directories of scenario records to compute cumulative planning
+# coverage for, one entry per technique being compared:
+#
+#   uv run deft coverage-batch --config techniques.yaml
+#
+# Copy this file to techniques.yaml (untracked, so it can hold the absolute
+# paths of a given machine) and point it at your own record directories.
+#
+# Every record matching --glob (default *.00000) under `dir` is covered,
+# searched recursively, and the per-record tracefiles are unioned into one
+# cumulative tracefile per technique. `name` labels that technique in the
+# printed table, in summary.json, and in the output directory names, so make
+# it something readable.
+
+techniques:
+  - name: Decictor
+    dir: /path/to/Decictor/outputs/scenario_1/decictor/run_1/record_apollo/
+
+  - name: DoppelTest
+    dir: /path/to/DoppelTest/data/records/2026-08-30_01-34-20/
+
+# A bare mapping of name to directory works too, when nothing else is needed:
+#
+#   Decictor: /path/to/decictor/records
+#   DoppelTest: /path/to/doppeltest/records

@@ -335,6 +335,10 @@ To demonstrate the generalizability of frame-based testing beyond Apollo, we dev
     uv run deft coverage-batch --config techniques.yaml
     ```
 
+    [`techniques.example.yaml`](techniques.example.yaml) is a starting point;
+    copy it to `techniques.yaml`, which is ignored by git so that it can hold
+    the absolute paths of a given machine.
+
     A mapping of name to directory is accepted as a shorthand, and JSON is
     read as well, YAML being a superset of it:
 

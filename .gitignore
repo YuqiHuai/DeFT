@@ -307,3 +307,6 @@ $RECYCLE.BIN/
 
 # Generated repository archive
 /DeFT-archive.zip
+
+# Local coverage-batch configuration; see techniques.example.yaml
+techniques.yaml
