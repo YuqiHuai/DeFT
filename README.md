@@ -279,9 +279,12 @@ To demonstrate the generalizability of frame-based testing beyond Apollo, we dev
 
     > Module tests under `out/testdata` are loaded into the DeFT-Apollo container and
     > executed under `bazel coverage`, with instrumentation limited to
-    > `//modules/planning`. The resulting LCOV data is rendered with `genhtml` and
-    > copied back to `out/coverage`; open `out/coverage/index.html` in a browser to
-    > browse line and function coverage of the planning module.
+    > `//modules/planning`. Bazel's own coverage collector invokes `gcov` without
+    > `-b` and so never records branch data, so the LCOV tracefile is captured
+    > directly from the `.gcno`/`.gcda` pairs the run leaves behind, with branch
+    > coverage enabled. It is rendered with `genhtml` and copied back to
+    > `out/coverage`; open `out/coverage/index.html` in a browser to browse line,
+    > function, and branch coverage of the planning module.
 
     The expected output of the command ends with
 

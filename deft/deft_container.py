@@ -274,17 +274,22 @@ class DeFTContainer:
         Returns:
             bool: True when a tracefile was found and copied.
         """
-        find = (
-            "ls /apollo/.cache/bazel/*/execroot/apollo/bazel-out/"
-            "_coverage/_coverage_report.dat 2>/dev/null | head -1"
-        )
-        result = subprocess.run(
-            ['docker', 'exec', '-u', self.user, self.container_name, 'sh', '-c', find],
+        remote = f'/home/{self.user}/deft/coverage.dat'
+        check = subprocess.run(
+            [
+                'docker',
+                'exec',
+                '-u',
+                self.user,
+                self.container_name,
+                'sh',
+                '-c',
+                f'test -s {remote} && echo exists',
+            ],
             capture_output=True,
             text=True,
         )
-        remote = result.stdout.strip()
-        if not remote:
+        if check.stdout.strip() != 'exists':
             return False
 
         target_file.parent.mkdir(parents=True, exist_ok=True)
@@ -294,8 +299,6 @@ class DeFTContainer:
             capture_output=True,
         )
         if target_file.exists():
-            # docker cp carries over the read-only mode bazel gives its
-            # outputs, which would block any later rewrite of the file.
             target_file.chmod(0o644)
             return True
         return False
