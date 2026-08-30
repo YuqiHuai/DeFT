@@ -18,6 +18,7 @@ def run_coverage(
     show_container_output: bool = False,
     flags: Optional[Dict[str, str]] = None,
     lcov_path: Optional[Path] = None,
+    save_report: bool = True,
 ):
     """
     Compute planning code coverage of extracted module tests.
@@ -43,6 +44,9 @@ def run_coverage(
             tracefile, unlike the HTML rendering of it, can be unioned and
             differenced across runs, so it is what makes coverage from separate
             records comparable.
+        save_report (bool): Whether to copy the HTML rendering out of the
+            container. Batch runs over many records only need the tracefiles,
+            and copying a report per record costs far more than producing one.
     """
     ctn = DeFTContainer(str(Path(CONFIG.APOLLO_ROOT)), 'deft')
 
@@ -75,11 +79,12 @@ def run_coverage(
             print(f'Applied planning flags: {applied}')
         ctn.deft_coverage(show_container_output=show_container_output)
 
-    if report_dir.exists():
-        shutil.rmtree(report_dir)
+    if save_report:
+        if report_dir.exists():
+            shutil.rmtree(report_dir)
 
-    print('Saving coverage report...')
-    ctn.save_genhtml(report_dir)
+        print('Saving coverage report...')
+        ctn.save_genhtml(report_dir)
 
     tracefile = Path(lcov_path) if lcov_path else report_dir / 'coverage.dat'
     if not ctn.save_lcov(tracefile):
@@ -94,13 +99,15 @@ def run_coverage(
         ctn.stop()
         ctn.remove()
 
-    if not report_dir.exists():
-        raise SystemExit(
-            'Coverage report was not produced inside the container; '
-            're-run with --show-container-output to see what went wrong.'
-        )
+    if save_report:
+        if not report_dir.exists():
+            raise SystemExit(
+                'Coverage report was not produced inside the container; '
+                're-run with --show-container-output to see what went wrong.'
+            )
 
-    print(f'Coverage report saved to {report_dir / "index.html"}')
+        print(f'Coverage report saved to {report_dir / "index.html"}')
+
     print(f'LCOV tracefile saved to {tracefile}')
 
 

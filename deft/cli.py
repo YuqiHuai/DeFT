@@ -3,6 +3,7 @@ import argparse
 from rich_argparse import RichHelpFormatter
 
 from deft.coverage import main as coverage_main
+from deft.coverage_batch import main as coverage_batch_main
 from deft.detect import main as detect_main
 from deft.execute import main as execute_main
 from deft.extract import main as extract_main
@@ -40,6 +41,13 @@ def main():
         'coverage', help='Compute planning coverage of extracted module tests'
     )
     coverage_main(coverage_parser)
+
+    # Batch coverage command
+    coverage_batch_parser = subparsers.add_parser(
+        'coverage-batch',
+        help='Compute cumulative planning coverage for directories of records',
+    )
+    coverage_batch_main(coverage_batch_parser)
 
     # Validate command
     validate_parser = subparsers.add_parser(

@@ -313,6 +313,64 @@ To demonstrate the generalizability of frame-based testing beyond Apollo, we dev
     > uv run deft coverage --frames-dir out/testdata_s2 --report-dir out/coverage_s2
     > ```
 
+9. *(Optional)* Measure the cumulative coverage of whole directories of records
+
+    A test generation technique produces a directory of scenario records, and
+    what matters about that directory is what its records reach *together*.
+    `deft coverage-batch` covers every record in each configured directory and
+    unions the per-record tracefiles into one cumulative tracefile per
+    directory. Directories are named, so the numbers say which technique they
+    belong to.
+
+    ```yaml
+    # techniques.yaml
+    techniques:
+      - name: Technique A
+        dir: data/records_a
+      - name: Technique B
+        dir: data/records_b
+    ```
+
+    ```bash
+    uv run deft coverage-batch --config techniques.yaml
+    ```
+
+    A mapping of name to directory is accepted as a shorthand, and JSON is
+    read as well, YAML being a superset of it:
+
+    ```yaml
+    Technique A: data/records_a
+    Technique B: data/records_b
+    ```
+
+    For a one-off run the directories can be given on the command line
+    instead:
+
+    ```bash
+    uv run deft coverage-batch --dir "Technique A=data/records_a" \
+                               --dir "Technique B=data/records_b"
+    ```
+
+    The command prints a table of cumulative line, function, and branch
+    coverage per technique, and writes:
+
+    ```text
+    out/coverage_batch/
+      Technique_A/
+        records/<record>.dat   per-record tracefiles
+        cumulative.dat         union of the above
+        genhtml/index.html     HTML rendering of the union
+      summary.json             the printed numbers, machine readable
+    ```
+
+    > Records are matched with `--glob` (default `*.00000`) and reconstructed
+    > with `--impl` (default `log`, for records from an Apollo carrying the
+    > DeFT instrumentation). One container serves the whole batch. A record
+    > whose tracefile already exists is skipped, so an interrupted batch
+    > resumes where it left off; pass `--force` to recompute. A record that
+    > fails does not abandon the batch: the failures are printed at the end
+    > and recorded in `summary.json`.
+
 ---
 
 ## Artifact Evaluation
