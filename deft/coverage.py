@@ -1,10 +1,12 @@
 import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 from config import CONFIG
 from deft.deft_container import DeFTContainer
 from deft.execute import resolve_map_name
+from deft.extract import IMPLEMENTATIONS, run_extract
+from deft.planning_flags import parse_flag, planning_flags
 
 
 def run_coverage(
@@ -14,6 +16,8 @@ def run_coverage(
     set_map: bool = True,
     keep_container: bool = False,
     show_container_output: bool = False,
+    flags: Optional[Dict[str, str]] = None,
+    lcov_path: Optional[Path] = None,
 ):
     """
     Compute planning code coverage of extracted module tests.
@@ -29,6 +33,16 @@ def run_coverage(
             container instead of restarting it.
         show_container_output (bool): Whether to show the output of the
             coverage run happening inside the container.
+        flags (Optional[Dict[str, str]]): Planning gflags to write into
+            planning.conf for this run, restored afterwards. The module tests
+            read planning.conf at startup, so a scenario executed under
+            non-default flags must have them applied here to exercise the same
+            code paths.
+        lcov_path (Optional[Path]): Where to write the raw LCOV tracefile,
+            defaulting to ``coverage.dat`` inside the report directory. The
+            tracefile, unlike the HTML rendering of it, can be unioned and
+            differenced across runs, so it is what makes coverage from separate
+            records comparable.
     """
     ctn = DeFTContainer(str(Path(CONFIG.APOLLO_ROOT)), 'deft')
 
@@ -55,13 +69,24 @@ def run_coverage(
     ctn.load_testdata(frames_dir)
 
     print('Computing planning coverage (this takes a while)...')
-    ctn.deft_coverage(show_container_output=show_container_output)
+    with planning_flags(flags or {}):
+        if flags:
+            applied = ' '.join(f'{k}={v}' for k, v in sorted(flags.items()))
+            print(f'Applied planning flags: {applied}')
+        ctn.deft_coverage(show_container_output=show_container_output)
 
     if report_dir.exists():
         shutil.rmtree(report_dir)
 
     print('Saving coverage report...')
     ctn.save_genhtml(report_dir)
+
+    tracefile = Path(lcov_path) if lcov_path else report_dir / 'coverage.dat'
+    if not ctn.save_lcov(tracefile):
+        raise SystemExit(
+            'No LCOV tracefile was produced inside the container; '
+            're-run with --show-container-output to see what went wrong.'
+        )
 
     if keep_container:
         print('Keeping DeFT container running...')
@@ -76,13 +101,32 @@ def run_coverage(
         )
 
     print(f'Coverage report saved to {report_dir / "index.html"}')
+    print(f'LCOV tracefile saved to {tracefile}')
 
 
 def main(parser):
     parser.add_argument(
+        'record',
+        nargs='?',
+        default=None,
+        help='Scenario record to extract module tests from before computing '
+        'coverage. Omit to reuse the frames already in --frames-dir',
+    )
+
+    parser.add_argument(
         '--frames-dir',
         default='out/testdata',
-        help='Directory containing extracted frames',
+        help='Directory holding the extracted frames: read from when a record '
+        'is not given, written to when one is',
+    )
+
+    parser.add_argument(
+        '--impl',
+        default='apollo',
+        choices=sorted(IMPLEMENTATIONS),
+        help='Implementation used to reconstruct frames when a record is '
+        'given. Use "log" for records from an Apollo carrying the DeFT '
+        'instrumentation',
     )
 
     parser.add_argument(
@@ -104,6 +148,23 @@ def main(parser):
     )
 
     parser.add_argument(
+        '--planning-flag',
+        action='append',
+        default=[],
+        metavar='NAME=VALUE',
+        help='Planning gflag to write into planning.conf for this run and '
+        'restore afterwards; repeatable. Use this to reproduce the '
+        'configuration the scenario was originally executed under',
+    )
+
+    parser.add_argument(
+        '--lcov-out',
+        default=None,
+        help='Where to write the raw LCOV tracefile '
+        '(default: coverage.dat inside --report-dir)',
+    )
+
+    parser.add_argument(
         '--keep-container',
         action='store_true',
         help='Leave the DeFT container running after computing coverage '
@@ -120,8 +181,18 @@ def main(parser):
         frames_dir = Path(args.frames_dir)
         report_dir = Path(args.report_dir)
 
-        if not frames_dir.exists():
+        if args.record is not None:
+            record = Path(args.record)
+            if not record.exists():
+                parser.error('Scenario record file does not exist')
+            run_extract(record, frames_dir, map_name=args.map, impl=args.impl)
+        elif not frames_dir.exists():
             parser.error('Frames directory does not exist')
+
+        try:
+            flags = dict(parse_flag(f) for f in args.planning_flag)
+        except ValueError as e:
+            parser.error(f'invalid --planning-flag: {e}')
 
         run_coverage(
             frames_dir,
@@ -130,6 +201,8 @@ def main(parser):
             set_map=not args.no_set_map,
             keep_container=args.keep_container,
             show_container_output=args.show_container_output,
+            flags=flags,
+            lcov_path=Path(args.lcov_out) if args.lcov_out else None,
         )
 
     parser.set_defaults(func=handler)

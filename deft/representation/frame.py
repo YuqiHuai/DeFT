@@ -13,6 +13,7 @@ class Frame:
     prediction_header_seq: int
     traffic_light_header_seq: int
     stories_header_seq: int = -1
+    pad_header_seq: int = -1
 
     def json(self):
         """
@@ -30,6 +31,7 @@ class Frame:
             'prediction_header_seq': self.prediction_header_seq,
             'traffic_light_header_seq': self.traffic_light_header_seq,
             'stories_header_seq': self.stories_header_seq,
+            'pad_header_seq': self.pad_header_seq,
         }
 
     def __hash__(self) -> int:
@@ -49,6 +51,7 @@ class Frame:
                 self.prediction_header_seq,
                 self.traffic_light_header_seq,
                 self.stories_header_seq,
+                self.pad_header_seq,
             )
         )
 
@@ -72,6 +75,8 @@ class Frame:
             self.traffic_light_header_seq = seq
         elif topic == ApolloTopics.STORIES:
             self.stories_header_seq = seq
+        elif topic == ApolloTopics.PAD:
+            self.pad_header_seq = seq
 
     def get_sequence_number_for_topic(self, topic: ApolloTopics) -> int:
         """
@@ -95,3 +100,5 @@ class Frame:
             return self.traffic_light_header_seq
         elif topic == ApolloTopics.STORIES:
             return self.stories_header_seq
+        elif topic == ApolloTopics.PAD:
+            return self.pad_header_seq

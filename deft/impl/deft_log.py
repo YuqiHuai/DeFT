@@ -29,6 +29,7 @@ class DeFTLog(DeFTBase):
                 msg.deft.prediction_header,
                 msg.deft.traffic_light_header,
                 msg.deft.stories_header,
+                msg.deft.pad_header,
             )
             frames.append(frame)
         return frames

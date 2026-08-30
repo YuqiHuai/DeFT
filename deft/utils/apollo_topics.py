@@ -6,6 +6,7 @@ class ApolloTopics:
     TRAFFIC_LIGHT = '/apollo/perception/traffic_light'
     PLANNING = '/apollo/planning'
     STORIES = '/apollo/storytelling'
+    PAD = '/apollo/planning/pad'
     HMI_STATUS = '/apollo/hmi/status'
 
 
@@ -16,6 +17,7 @@ PLANNING_INPUT_TOPICS = [
     ApolloTopics.PREDICTION,
     ApolloTopics.TRAFFIC_LIGHT,
     ApolloTopics.STORIES,
+    ApolloTopics.PAD,
 ]
 
 
@@ -34,3 +36,5 @@ def get_topic_short_name(topic: ApolloTopics) -> str:
         return 'planning'
     elif topic == ApolloTopics.STORIES:
         return 'stories'
+    elif topic == ApolloTopics.PAD:
+        return 'pad'

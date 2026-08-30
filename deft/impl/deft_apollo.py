@@ -56,8 +56,25 @@ class DeFTApollo(DeFTBase):
         traffic_light_start_index = 0
         prev_traffic_light_header_num = None
 
+        # The pad message is published once, when an operator requests an
+        # action, and the planner keeps it in its LocalView from then on. The
+        # frame's pad is therefore the latest one published before tF, and -1
+        # until the first is published.
+        pad_msgs = self.messages.get(ApolloTopics.PAD, dict())
+        pad_keys = sorted(pad_msgs, key=lambda key: pad_msgs[key][1])
+
+        skipped_empty = 0
+
         for psn in planning_sequence_numbers:
             pmsg, tP = planning_messages[psn]
+
+            # A planning failure (e.g. error_code PLANNING_ERROR) publishes a
+            # message carrying no trajectory. tF cannot be inferred from it,
+            # and it has no expected output to reproduce, so it cannot serve
+            # as a module test.
+            if len(pmsg.trajectory_point) == 0:
+                skipped_empty += 1
+                continue
 
             tF = self._infer_tF(pmsg)
 
@@ -101,6 +118,13 @@ class DeFTApollo(DeFTBase):
                 prev_traffic_light_header_num = traffic_light_header_num
                 traffic_light_start_index = best_idx
 
+            pad_header_num = -1
+            for key in pad_keys:
+                if pad_msgs[key][1] / 1e9 <= tF:
+                    pad_header_num = pad_msgs[key][0].header.sequence_num
+                else:
+                    break  # sorted by time
+
             # Stories not supported by current test approaches
             stories_header_num = 0
 
@@ -113,6 +137,14 @@ class DeFTApollo(DeFTBase):
                 prediction_header_num,
                 traffic_light_header_num or 0,  # fallback to 0 if no TL message found
                 stories_header_num,
+                pad_header_num,
             )
             frames.append(frame)
+
+        if skipped_empty:
+            print(
+                f'Skipped {skipped_empty} planning message(s) with no '
+                'trajectory (planning failures).'
+            )
+
         return frames

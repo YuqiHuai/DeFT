@@ -13,6 +13,7 @@ from apollo_modules.modules.perception.proto.traffic_light_detection_pb2 import 
 from apollo_modules.modules.prediction.proto.prediction_obstacle_pb2 import (
     PredictionObstacles,
 )
+from apollo_modules.modules.planning.proto.pad_msg_pb2 import PadMessage
 from apollo_modules.modules.routing.proto.routing_pb2 import RoutingResponse
 from apollo_modules.modules.storytelling.proto.story_pb2 import Stories
 from deft.representation.frame import Frame
@@ -45,6 +46,8 @@ def get_empty_message(topic: str):
         return TrafficLightDetection()
     elif topic == ApolloTopics.STORIES:
         return Stories()
+    elif topic == ApolloTopics.PAD:
+        return PadMessage()
 
 
 class DeFTBase:
@@ -161,7 +164,15 @@ class DeFTBase:
                 topic_messages = self.messages.get(planning_input_topic)
 
                 # check if input topic is tracked
-                if topic_messages is None:
+                if msg_sequence_num is not None and msg_sequence_num < 0:
+                    # A negative sequence number means the planner genuinely
+                    # held no message for this topic at this frame (the pad
+                    # message before the operator sends one), not that input
+                    # data was lost. An empty message reproduces that state:
+                    # PadMessage without an action leaves the driving action
+                    # untouched, exactly as a null pad_msg does.
+                    msg = get_empty_message(planning_input_topic)
+                elif topic_messages is None:
                     # The topic is absent from the whole record, which is a
                     # property of the scenario rather than lost input data.
                     msg = get_empty_message(planning_input_topic)

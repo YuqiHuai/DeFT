@@ -261,6 +261,45 @@ class DeFTContainer:
         ]
         subprocess.run(copy_command, check=True, capture_output=True)
 
+    def save_lcov(self, target_file: Path) -> bool:
+        """
+        Save the raw LCOV tracefile produced by the last coverage run.
+
+        The HTML report is a rendering of this file; keeping the tracefile is
+        what makes coverage from separate runs aggregable and comparable.
+
+        Args:
+            target_file (Path): The file to write the tracefile to.
+
+        Returns:
+            bool: True when a tracefile was found and copied.
+        """
+        find = (
+            "ls /apollo/.cache/bazel/*/execroot/apollo/bazel-out/"
+            "_coverage/_coverage_report.dat 2>/dev/null | head -1"
+        )
+        result = subprocess.run(
+            ['docker', 'exec', '-u', self.user, self.container_name, 'sh', '-c', find],
+            capture_output=True,
+            text=True,
+        )
+        remote = result.stdout.strip()
+        if not remote:
+            return False
+
+        target_file.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            ['docker', 'cp', f'{self.container_name}:{remote}', str(target_file)],
+            check=True,
+            capture_output=True,
+        )
+        if target_file.exists():
+            # docker cp carries over the read-only mode bazel gives its
+            # outputs, which would block any later rewrite of the file.
+            target_file.chmod(0o644)
+            return True
+        return False
+
     def _execute_command(self, command: List[str], show_container_output=False):
         """
         Prepares and executes a command in the DeFT container.
