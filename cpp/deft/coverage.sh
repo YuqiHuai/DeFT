@@ -35,10 +35,6 @@ OUT_DIR="/home/${USER}/deft"
 TRACEFILE="${OUT_DIR}/coverage.dat"
 RAW_TRACEFILE="${OUT_DIR}/coverage.raw.dat"
 
-bazel coverage -s \
-  --instrumentation_filter="^//modules/planning[/:]" \
-  //modules/deft:main_test
-
 EXECROOT="$(bazel info execution_root)"
 
 # The test writes its .gcda files under COVERAGE_DIR (GCOV_PREFIX), which
@@ -47,6 +43,18 @@ EXECROOT="$(bazel info execution_root)"
 # everything lcov needs, for the planning module the instrumentation filter
 # selected.
 COVERAGE_DIR="${EXECROOT}/_coverage/modules/deft/main_test"
+
+# gcov writes its counters when the test exits, so a run that was interrupted
+# leaves half-written .gcda behind. Those parse into nonsense -- coverage
+# attributed to lines past the end of the file it claims to be -- and the
+# capture below would fold them into this run's data. Start from an empty
+# directory so only this run's counters are read.
+rm -rf "${COVERAGE_DIR}"
+
+bazel coverage -s \
+  --instrumentation_filter="^//modules/planning[/:]" \
+  //modules/deft:main_test
+
 if [ -z "$(find "${COVERAGE_DIR}" -name '*.gcda' 2>/dev/null | head -1)" ]; then
   echo "No .gcda files found under ${COVERAGE_DIR}; the instrumented test" \
     "did not run." >&2

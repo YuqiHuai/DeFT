@@ -318,10 +318,14 @@ def run_coverage_batch(
                     save_report=False,
                 )
                 result.tracefiles.append(tracefile)
-            except Exception as e:  # noqa: BLE001 - one bad record must not
-                # abandon a batch that may take hours.
+            except (Exception, SystemExit) as e:  # noqa: BLE001 - one bad
+                # record, including one whose counters came out corrupt, must
+                # not abandon a batch that may take hours.
                 print(f'{label}: FAILED: {e}')
                 result.failures.append(f'{record.name}: {e}')
+                # A rejected tracefile must not survive to be reused as a
+                # completed record by the next run, nor unioned into the total.
+                tracefile.unlink(missing_ok=True)
             finally:
                 shutil.rmtree(frames_dir, ignore_errors=True)
 

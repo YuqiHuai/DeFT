@@ -1,12 +1,59 @@
 import shutil
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from config import CONFIG
 from deft.deft_container import DeFTContainer
 from deft.execute import resolve_map_name
 from deft.extract import IMPLEMENTATIONS, run_extract
 from deft.planning_flags import parse_flag, planning_flags
+
+
+def find_corrupt_sources(tracefile: Path, source_root: Path) -> List[str]:
+    """
+    Find sources whose coverage cannot belong to them.
+
+    gcov writes its counters when the instrumented test exits, so a run that
+    was interrupted leaves half-written data behind, which parses into
+    coverage attributed to lines past the end of the file it claims to be.
+    Such a tracefile is not merely incomplete: unioned with others it inflates
+    the line total of every technique it is part of, so it has to be caught
+    rather than merged.
+
+    Args:
+        tracefile (Path): The LCOV tracefile to check.
+        source_root (Path): Directory the tracefile's paths are relative to.
+
+    Returns:
+        List[str]: One description per source whose records overrun it.
+    """
+    problems = []
+    current = None
+    highest = 0
+
+    def check():
+        if current is None:
+            return
+        source = source_root / current
+        if not source.is_file():
+            return
+        with open(source, 'rb') as fp:
+            length = sum(1 for _ in fp)
+        if highest > length:
+            problems.append(f'{current}: line {highest} of a {length}-line file')
+
+    with open(tracefile) as fp:
+        for line in fp:
+            if line.startswith('SF:'):
+                check()
+                current = line[3:].strip()
+                highest = 0
+            elif line.startswith('DA:'):
+                number = int(line[3:].split(',', 1)[0])
+                highest = max(highest, number)
+    check()
+
+    return problems
 
 
 def run_coverage(
@@ -91,6 +138,17 @@ def run_coverage(
         raise SystemExit(
             'No LCOV tracefile was produced inside the container; '
             're-run with --show-container-output to see what went wrong.'
+        )
+
+    corrupt = find_corrupt_sources(tracefile, Path(CONFIG.APOLLO_ROOT))
+    if corrupt:
+        shown = '\n  '.join(corrupt[:5])
+        more = f'\n  ... and {len(corrupt) - 5} more' if len(corrupt) > 5 else ''
+        raise SystemExit(
+            f'{tracefile} records coverage for lines that do not exist in '
+            f'{len(corrupt)} source file(s):\n  {shown}{more}\n'
+            'The instrumented test was very likely interrupted, leaving gcov '
+            'counters half-written. Re-run to recompute this record.'
         )
 
     if keep_container:
