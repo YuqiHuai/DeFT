@@ -76,7 +76,15 @@ class DeFTBase:
         start_loading = False
         skip_planning = True
 
-        for topic, msg, t in record.read_messages():
+        # Only the planner's own output and its inputs are ever read back out
+        # of self.messages, and indexing a message costs it a
+        # header.sequence_num. A record written without a -c topic list also
+        # carries /clock and /tf, which have no header at all, and indexing
+        # those aborted the whole extraction. Naming the topics keeps such
+        # records readable and skips decoding sensor payloads nothing consumes.
+        for topic, msg, t in record.read_messages(
+            topics=[ApolloTopics.PLANNING, *PLANNING_INPUT_TOPICS]
+        ):
             if topic == ApolloTopics.ROUTING_RESPONSE:
                 start_loading = True
 
