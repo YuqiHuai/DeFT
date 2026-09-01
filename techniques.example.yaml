@@ -11,6 +11,9 @@
 # cumulative tracefile per technique. `name` labels that technique in the
 # printed table, in summary.json, and in the output directory names, so make
 # it something readable.
+#
+# Techniques name their records differently, so an entry may add its own
+# `glob` when the batch-wide one does not match its directory.
 
 techniques:
   - name: Decictor
@@ -18,6 +21,11 @@ techniques:
 
   - name: DoppelTest
     dir: /path/to/DoppelTest/data/records/2026-08-30_01-34-20/
+
+  # This one writes one record per vehicle, named after the vehicle.
+  - name: META-V2V
+    dir: /path/to/META-V2V/records/20260830_232251/
+    glob: 'Car_*.00000'
 
 # A bare mapping of name to directory works too, when nothing else is needed:
 #

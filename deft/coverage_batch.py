@@ -68,6 +68,61 @@ def worker_user(index: int) -> str:
     return f'deft_w{index + 1:02d}'
 
 
+def format_bytes(count: int) -> str:
+    """Render a byte count for a progress line.
+
+    Args:
+        count (int): The number of bytes.
+
+    Returns:
+        str: A human-readable size.
+    """
+    size = float(count)
+    for unit in ('B', 'KiB', 'MiB', 'GiB'):
+        if size < 1024 or unit == 'GiB':
+            return f'{size:.1f} {unit}' if unit != 'B' else f'{int(size)} B'
+        size /= 1024
+
+
+def purge_core_dumps(apollo_root: Path) -> int:
+    """
+    Remove the core dumps a crashed replay left in an Apollo checkout.
+
+    Apollo's container setup points the kernel's core_pattern at
+    /apollo/data/core, which is the bind-mounted checkout, so a planning
+    process that dies on a bad record leaves a core there -- gigabytes of it,
+    the process having the whole map and its Bazel-linked test binary
+    resident. core_pattern is a kernel-wide setting shared with the host, so
+    this holds for every worker at once, and a batch runs thousands of records
+    of which a crashing one is not rare. Left alone the cores fill the disk
+    long before the batch ends.
+
+    Nothing reads them: a record that fails is reported, its tracefile
+    discarded, and the record recomputed on the next run.
+
+    Args:
+        apollo_root (Path): The checkout to clean, as seen from the host.
+
+    Returns:
+        int: Bytes freed.
+    """
+    core_dir = Path(apollo_root) / 'data' / 'core'
+    if not core_dir.is_dir():
+        return 0
+
+    freed = 0
+    for core in core_dir.glob('core_*'):
+        try:
+            size = core.stat().st_size
+            core.unlink()
+        except OSError:
+            # A core the kernel is still writing, or one left by another
+            # user's container; the next purge takes it.
+            continue
+        freed += size
+    return freed
+
+
 def _cover_shard(
     records: List[Path],
     directory: Path,
@@ -94,11 +149,12 @@ def _cover_shard(
         user (str): This worker's container user.
         tag (str): Prefix for progress lines.
         options (dict): map_name, set_map, impl, flags, force,
-            show_container_output.
+            show_container_output, keep_core_dumps.
 
     Returns:
         A ``(tracefiles, failures)`` pair.
     """
+    checkout = Path(apollo_root or CONFIG.APOLLO_ROOT)
     tracefiles: List[Path] = []
     failures: List[str] = []
 
@@ -145,6 +201,16 @@ def _cover_shard(
             tracefile.unlink(missing_ok=True)
         finally:
             shutil.rmtree(frames_dir, ignore_errors=True)
+            # After every record, not once at the end: the point is to keep
+            # the disk from filling while the batch is still running.
+            if not options['keep_core_dumps']:
+                freed = purge_core_dumps(checkout)
+                if freed:
+                    print(
+                        f'{label}: removed {format_bytes(freed)} of core '
+                        f'dumps left by the run',
+                        flush=True,
+                    )
 
     return tracefiles, failures
 
@@ -159,10 +225,17 @@ SUMMARY_PATTERN = re.compile(
 
 @dataclass
 class Technique:
-    """One named directory of scenario records."""
+    """One named directory of scenario records.
+
+    Techniques name their records differently -- ``recording.00000`` for one,
+    ``gen_0_sce_0.00000`` for another, ``Car_0.00000`` for a third -- so a
+    comparison cannot always be served by one glob. A technique may carry its
+    own, leaving the batch-wide glob for the directories that fit it.
+    """
 
     name: str
     directory: Path
+    pattern: Optional[str] = None
 
     @property
     def slug(self) -> str:
@@ -353,6 +426,7 @@ def run_coverage_batch(
     show_container_output: bool = False,
     workers: int = 1,
     worker_root: Optional[Path] = None,
+    keep_core_dumps: bool = False,
 ) -> List[TechniqueResult]:
     """
     Compute cumulative planning coverage for each configured directory.
@@ -361,7 +435,8 @@ def run_coverage_batch(
         techniques (List[Technique]): Named directories of scenario records.
         out_dir (Path): Directory to write tracefiles and reports to.
         work_dir (Path): Directory to extract module tests into.
-        pattern (str): Glob matching the record files in each directory.
+        pattern (str): Glob matching the record files of the techniques that
+            do not carry a glob of their own.
         impl (str): Implementation used to reconstruct frames.
         map_name (Optional[str]): HD map to configure for every record,
             overriding the one detected during extraction.
@@ -377,6 +452,10 @@ def run_coverage_batch(
             mount whose planning configuration a run rewrites, and which holds
             the Bazel output base the test writes coverage data to.
         worker_root (Optional[Path]): Directory holding those checkouts.
+        keep_core_dumps (bool): Leave behind the core dumps that crashed runs
+            write into the Apollo checkout, instead of removing them after
+            each record. They are gigabytes apiece and nothing here reads
+            them, so keep them only to debug a crash.
 
     Returns:
         List[TechniqueResult]: What each technique's records covered.
@@ -398,7 +477,8 @@ def run_coverage_batch(
     results = []
 
     total_records = sum(
-        len(find_records(t.directory, pattern, limit)) for t in techniques
+        len(find_records(t.directory, t.pattern or pattern, limit))
+        for t in techniques
     )
     completed = 0
 
@@ -406,12 +486,13 @@ def run_coverage_batch(
         result = TechniqueResult(technique=technique)
         results.append(result)
 
-        records = find_records(technique.directory, pattern, limit)
-        available = len(find_records(technique.directory, pattern))
+        technique_pattern = technique.pattern or pattern
+        records = find_records(technique.directory, technique_pattern, limit)
+        available = len(find_records(technique.directory, technique_pattern))
         if not records:
             print(
-                f'[{technique.name}] no records matching {pattern!r} under '
-                f'{technique.directory}'
+                f'[{technique.name}] no records matching '
+                f'{technique_pattern!r} under {technique.directory}'
             )
             continue
 
@@ -427,6 +508,7 @@ def run_coverage_batch(
             'map_name': map_name, 'set_map': set_map, 'impl': impl,
             'flags': flags, 'force': force,
             'show_container_output': show_container_output,
+            'keep_core_dumps': keep_core_dumps,
         }
         frames_root = work_dir / technique.slug
 
@@ -558,7 +640,9 @@ def load_techniques(config_path: Path) -> List[Technique]:
 
     The file is YAML, which also covers JSON. It holds a list of
     ``{name, dir}`` entries, either at the top level or under a ``techniques``
-    key, and a mapping of name to directory is accepted as a shorthand.
+    key, and a mapping of name to directory is accepted as a shorthand. An
+    entry may add a ``glob`` naming that directory's records, for a technique
+    whose naming differs from the rest of the comparison.
 
     Args:
         config_path (Path): Path of the config file.
@@ -592,7 +676,14 @@ def load_techniques(config_path: Path) -> List[Technique]:
                 f'got {entry!r}'
             )
         directory = Path(str(entry['dir'])).expanduser()
-        techniques.append(Technique(name=str(entry['name']), directory=directory))
+        glob = entry.get('glob')
+        techniques.append(
+            Technique(
+                name=str(entry['name']),
+                directory=directory,
+                pattern=str(glob) if glob else None,
+            )
+        )
 
     if not techniques:
         raise ValueError(f'{config_path} lists no techniques')
@@ -638,7 +729,8 @@ def main(parser):
         '--glob',
         default=DEFAULT_GLOB,
         help=f'Glob matching the record files, searched recursively under '
-        f'each directory (default: {DEFAULT_GLOB})',
+        f'each directory that does not name its own (default: '
+        f'{DEFAULT_GLOB})',
     )
 
     parser.add_argument(
@@ -717,6 +809,15 @@ def main(parser):
     )
 
     parser.add_argument(
+        '--keep-core-dumps',
+        action='store_true',
+        help='Leave behind the core dumps that crashed runs write into the '
+        "Apollo checkout's data/core, instead of removing them after each "
+        'record. They are gigabytes apiece, so keep them only to debug a '
+        'crash',
+    )
+
+    parser.add_argument(
         '--keep-container',
         action='store_true',
         help='Leave the DeFT container running after the batch finishes',
@@ -776,6 +877,7 @@ def main(parser):
             show_container_output=args.show_container_output,
             workers=args.workers,
             worker_root=Path(args.worker_root) if args.worker_root else None,
+            keep_core_dumps=args.keep_core_dumps,
         )
         report(results, out_dir)
 

@@ -329,6 +329,9 @@ To demonstrate the generalizability of frame-based testing beyond Apollo, we dev
         dir: data/records_a
       - name: Technique B
         dir: data/records_b
+        # Techniques name their records differently, so an entry may carry
+        # its own glob when the batch-wide one does not match its directory.
+        glob: 'Car_*.00000'
     ```
 
     ```bash
@@ -367,13 +370,20 @@ To demonstrate the generalizability of frame-based testing beyond Apollo, we dev
       summary.json             the printed numbers, machine readable
     ```
 
-    > Records are matched with `--glob` (default `*.00000`) and reconstructed
+    > Records are matched with each technique's `glob`, or `--glob` (default
+    > `*.00000`) for the techniques that do not carry one, and reconstructed
     > with `--impl` (default `log`, for records from an Apollo carrying the
     > DeFT instrumentation). One container serves the whole batch. A record
     > whose tracefile already exists is skipped, so an interrupted batch
     > resumes where it left off; pass `--force` to recompute. A record that
     > fails does not abandon the batch: the failures are printed at the end
     > and recorded in `summary.json`.
+
+    > A run that crashes leaves a core dump in the Apollo checkout's
+    > `data/core`, gigabytes at a time, because Apollo's container setup
+    > points the kernel's `core_pattern` there. Over a long batch those fill
+    > the disk, so each record's cores are removed once it has been covered;
+    > pass `--keep-core-dumps` to keep them when debugging a crash.
 
 ---
 
