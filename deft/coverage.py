@@ -108,7 +108,14 @@ def run_coverage(
             docker_base.sh matches container names by substring, so w1 would
             also match w10.
     """
-    ctn = DeFTContainer(str(Path(apollo_root or CONFIG.APOLLO_ROOT)), user)
+    root = Path(apollo_root or CONFIG.APOLLO_ROOT)
+    ctn = DeFTContainer(str(root), user)
+    # The flags must be written into the checkout this run actually mounts as
+    # /apollo, not into the one CONFIG happens to name. Concurrent workers each
+    # own a checkout, so defaulting to CONFIG.APOLLO_ROOT edited a planning.conf
+    # no container was reading and every replay silently fell back to the
+    # compiled gflag defaults.
+    conf_path = root / 'modules/planning/conf/planning.conf'
 
     if set_map:
         resolved_map = resolve_map_name(frames_dir, map_name)
@@ -133,7 +140,7 @@ def run_coverage(
     ctn.load_testdata(frames_dir)
 
     print('Computing planning coverage (this takes a while)...')
-    with planning_flags(flags or {}):
+    with planning_flags(flags or {}, conf_path):
         if flags:
             applied = ' '.join(f'{k}={v}' for k, v in sorted(flags.items()))
             print(f'Applied planning flags: {applied}')
