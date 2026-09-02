@@ -50,6 +50,10 @@ def get_empty_message(topic: str):
         return PadMessage()
 
 
+class NoPlanningFramesError(ValueError):
+    """A record carries no planning output frames can be derived from."""
+
+
 class DeFTBase:
     def __init__(self):
         """
@@ -60,6 +64,11 @@ class DeFTBase:
         """
         self.messages = dict()
         self.num_msgs = 0
+        #: Why planning messages were dropped, for reporting a record that
+        #: yielded none.
+        self.planning_seen = 0
+        self.planning_before_route = 0
+        self.planning_not_ready = 0
 
     def load_record_file(self, record_path: str) -> int:
         """
@@ -73,6 +82,9 @@ class DeFTBase:
         """
         record = Record(record_path)
         self.num_msgs = 0
+        self.planning_seen = 0
+        self.planning_before_route = 0
+        self.planning_not_ready = 0
         start_loading = False
         skip_planning = True
 
@@ -92,13 +104,16 @@ class DeFTBase:
                 # Frames are derived from planning outputs, so only accept
                 # those belonging to the current route and reporting a real
                 # decision.
+                self.planning_seen += 1
                 if not start_loading:
+                    self.planning_before_route += 1
                     continue
 
                 if not msg.decision.main_decision.HasField('not_ready'):
                     skip_planning = False
 
                 if skip_planning:
+                    self.planning_not_ready += 1
                     continue
 
             # Planning inputs are kept regardless of when they were published.
@@ -114,6 +129,32 @@ class DeFTBase:
             self.num_msgs += 1
         return self.num_msgs
 
+    def _no_planning_reason(self) -> str:
+        """
+        Explain why the record yielded no usable planning messages.
+
+        A record can carry hundreds of planning messages and still leave
+        nothing to reconstruct, so naming which filter emptied it is what
+        separates a truncated record from one where planning never produced a
+        real decision.
+
+        Returns:
+            str: The reason, for the error raised to the caller.
+        """
+        if self.planning_seen == 0:
+            return 'record carries no /apollo/planning messages'
+        if self.planning_before_route == self.planning_seen:
+            return (
+                f'all {self.planning_seen} planning message(s) precede the '
+                f'routing response, or the record carries none '
+                f'(/apollo/routing_response)'
+            )
+        return (
+            f'none of the {self.planning_seen} planning message(s) reports a '
+            f'decision: planning never became ready after the routing '
+            f'response (e.g. it failed to create a reference line)'
+        )
+
     def extract_frames(self, record_path: str) -> List[Frame]:
         """
         Extract frames from the loaded messages.
@@ -128,9 +169,8 @@ class DeFTBase:
             raise FileNotFoundError(record_path)
         num_msgs = self.load_record_file(record_path)
         assert num_msgs > 0, 'No messages loaded'
-        assert (
-            len(self.messages[ApolloTopics.PLANNING]) > 0
-        ), 'No planning messages loaded'
+        if not self.messages.get(ApolloTopics.PLANNING):
+            raise NoPlanningFramesError(self._no_planning_reason())
 
         return self._extract_frames()
 
