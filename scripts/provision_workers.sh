@@ -68,11 +68,14 @@ if [[ ! -d "${source_dir}/.cache/bazel" ]]; then
   echo "record. Run 'uv run deft coverage <record>' once before provisioning."
   echo
 else
+  # `| head -1` would exit on the first line and SIGPIPE the writer, which
+  # pipefail turns into a 141 the script dies on. awk drains its input instead.
+  newest() { awk '$1 > m { m = $1 } END { if (m != "") print m }'; }
   newest_src=$(find "${source_dir}/modules/planning" "${source_dir}/modules/deft" \
     \( -name '*.cc' -o -name '*.h' -o -name 'BUILD' \) -printf '%T@\n' 2>/dev/null \
-    | sort -rn | head -1)
+    | newest)
   newest_build=$(find "${source_dir}/.cache/bazel" -path '*bin/modules/deft*' \
-    -printf '%T@\n' 2>/dev/null | sort -rn | head -1)
+    -printf '%T@\n' 2>/dev/null | newest)
   if [[ -z "${newest_build}" ]]; then
     echo -e "${YELLOW}Warning: no built //modules/deft outputs in the Bazel cache.${NC}"
     echo "Run 'uv run deft coverage <record>' once so the copies carry the build."
