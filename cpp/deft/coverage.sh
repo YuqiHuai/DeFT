@@ -34,6 +34,15 @@ set -euo pipefail
 OUT_DIR="/home/${USER}/deft"
 TRACEFILE="${OUT_DIR}/coverage.dat"
 RAW_TRACEFILE="${OUT_DIR}/coverage.raw.dat"
+# The counters and the notes that decode them, archived beside the tracefile.
+# An LCOV tracefile is a lossy rendering: `BRDA:line,block,branch,taken` keeps
+# no record of which outcomes are exception edges rather than decisions, so a
+# question like "what is branch coverage over real decisions?" cannot be
+# answered from it afterwards -- only by covering every record again, which is
+# days of machine time. The raw pair can be re-read with gcov as often as the
+# question changes.
+GCDA_ARCHIVE="${OUT_DIR}/coverage-gcda.tar.gz"
+GCNO_ARCHIVE="${OUT_DIR}/coverage-gcno.tar.gz"
 
 EXECROOT="$(bazel info execution_root)"
 
@@ -95,6 +104,17 @@ lcov --extract "${RAW_TRACEFILE}.filtered" '*modules/planning/*' \
   --output-file "${TRACEFILE}"
 
 rm -f "${RAW_TRACEFILE}" "${RAW_TRACEFILE}.filtered"
+
+# Archive the counters and, separately, the notes. They are split because the
+# .gcno are identical for every record covered against one build -- archiving
+# them per record would multiply the same tens of megabytes by the size of the
+# batch -- while the .gcda differ per record and are what has to be kept.
+# Paths are stored relative to COVERAGE_DIR so the pair can be unpacked into
+# one directory and read by gcov without knowing this container's layout.
+rm -f "${GCDA_ARCHIVE}" "${GCNO_ARCHIVE}"
+cd "${COVERAGE_DIR}"
+find . -name '*.gcda' -print0 | tar --null -czf "${GCDA_ARCHIVE}" --files-from=-
+find . -name '*.gcno' -print0 | tar --null -czf "${GCNO_ARCHIVE}" --files-from=-
 
 # The rewritten paths are workspace-relative, so render from the workspace.
 cd /apollo

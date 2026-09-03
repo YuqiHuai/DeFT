@@ -274,7 +274,42 @@ class DeFTContainer:
         Returns:
             bool: True when a tracefile was found and copied.
         """
-        remote = f'/home/{self.user}/deft/coverage.dat'
+        return self._save_deft_output('coverage.dat', target_file)
+
+    def save_gcov_archive(self, kind: str, target_file: Path) -> bool:
+        """
+        Save the raw gcov data the last coverage run archived.
+
+        ``kind`` is ``gcda`` (this record's counters) or ``gcno`` (the notes
+        that decode them, identical for every record covered against one
+        build). Keeping them is what allows coverage to be re-derived under a
+        different definition -- decisions only, execution counts, anything an
+        LCOV tracefile has already thrown away -- without covering every
+        record again.
+
+        Args:
+            kind (str): Either ``gcda`` or ``gcno``.
+            target_file (Path): The file to write the archive to.
+
+        Returns:
+            bool: True when the archive was found and copied.
+        """
+        if kind not in ('gcda', 'gcno'):
+            raise ValueError(f'unknown gcov archive kind: {kind!r}')
+        return self._save_deft_output(f'coverage-{kind}.tar.gz', target_file)
+
+    def _save_deft_output(self, name: str, target_file: Path) -> bool:
+        """
+        Copy one file out of the container's deft output directory.
+
+        Args:
+            name (str): File name inside ``/home/<user>/deft``.
+            target_file (Path): Where to write it.
+
+        Returns:
+            bool: True when the file existed and was copied.
+        """
+        remote = f'/home/{self.user}/deft/{name}'
         check = subprocess.run(
             [
                 'docker',

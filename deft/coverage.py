@@ -65,6 +65,8 @@ def run_coverage(
     show_container_output: bool = False,
     flags: Optional[Dict[str, str]] = None,
     lcov_path: Optional[Path] = None,
+    gcda_path: Optional[Path] = None,
+    gcno_path: Optional[Path] = None,
     save_report: bool = True,
     apollo_root: Optional[Path] = None,
     user: str = 'deft',
@@ -93,6 +95,15 @@ def run_coverage(
             tracefile, unlike the HTML rendering of it, can be unioned and
             differenced across runs, so it is what makes coverage from separate
             records comparable.
+        gcda_path (Optional[Path]): Where to save this run's raw gcov
+            counters, as a ``.tar.gz``. Skipped when None. An LCOV tracefile
+            keeps only whether an entity was hit, so questions the tracefile
+            cannot answer -- decision-only branch coverage, execution counts --
+            otherwise require covering every record again, which is days of
+            machine time. Keeping the counters makes that a re-read instead.
+        gcno_path (Optional[Path]): Where to save the gcov notes that decode
+            those counters. Identical for every record covered against one
+            build, so a batch should ask for this once, not per record.
         save_report (bool): Whether to copy the HTML rendering out of the
             container. Batch runs over many records only need the tracefiles,
             and copying a report per record costs far more than producing one.
@@ -159,6 +170,17 @@ def run_coverage(
             'No LCOV tracefile was produced inside the container; '
             're-run with --show-container-output to see what went wrong.'
         )
+
+    # After the tracefile, so a run that fails its corruption check below has
+    # still left its counters behind to be examined.
+    for kind, destination in (('gcda', gcda_path), ('gcno', gcno_path)):
+        if destination is None:
+            continue
+        if not ctn.save_gcov_archive(kind, Path(destination)):
+            print(
+                f'Warning: no {kind} archive was produced inside the '
+                'container; raw coverage data was not saved for this record.'
+            )
 
     corrupt = find_corrupt_sources(tracefile, Path(apollo_root or CONFIG.APOLLO_ROOT))
     if corrupt:

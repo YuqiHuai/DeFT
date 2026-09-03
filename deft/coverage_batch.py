@@ -161,9 +161,22 @@ def _cover_shard(
     for i, record in enumerate(records, start=1):
         key = record_key(directory, record)
         tracefile = records_out / f'{key}.dat'
+        # The counters this record produced, kept so coverage can be re-derived
+        # later under a definition the tracefile cannot express -- decisions
+        # only, execution counts -- without covering every record again.
+        gcda_archive = records_out / f'{key}.gcda.tar.gz'
+        # The notes that decode them are the same for every record covered
+        # against one build, so one copy per technique is enough. Asking for it
+        # only when it is missing also repairs a run whose first record failed.
+        gcno_archive = records_out / 'coverage-gcno.tar.gz'
         label = f'{tag} ({i}/{len(records)}) {key}'
 
-        if tracefile.exists() and not options['force']:
+        # The archive is required alongside the tracefile, so a batch resumed
+        # after raw-data archiving was introduced backfills the records covered
+        # before it rather than leaving a corpus where only some records can be
+        # re-derived. Re-covering one record is minutes; discovering the gap
+        # after the batch is another full run.
+        if tracefile.exists() and gcda_archive.exists() and not options['force']:
             print(f'{label}: reusing existing tracefile', flush=True)
             tracefiles.append(tracefile)
             continue
@@ -186,6 +199,8 @@ def _cover_shard(
                 show_container_output=options['show_container_output'],
                 flags=options['flags'],
                 lcov_path=tracefile,
+                gcda_path=gcda_archive,
+                gcno_path=None if gcno_archive.exists() else gcno_archive,
                 save_report=False,
                 apollo_root=apollo_root,
                 user=user,
@@ -197,8 +212,10 @@ def _cover_shard(
             print(f'{label}: FAILED: {e}', flush=True)
             failures.append(f'{record.name}: {e}')
             # A rejected tracefile must not survive to be reused as a completed
-            # record by the next run, nor unioned into the total.
+            # record by the next run, nor unioned into the total. Its counters
+            # go with it: they describe the same rejected run.
             tracefile.unlink(missing_ok=True)
+            gcda_archive.unlink(missing_ok=True)
         finally:
             shutil.rmtree(frames_dir, ignore_errors=True)
             # After every record, not once at the end: the point is to keep
