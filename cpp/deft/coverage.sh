@@ -113,8 +113,23 @@ rm -f "${RAW_TRACEFILE}" "${RAW_TRACEFILE}.filtered"
 # one directory and read by gcov without knowing this container's layout.
 rm -f "${GCDA_ARCHIVE}" "${GCNO_ARCHIVE}"
 cd "${COVERAGE_DIR}"
-find . -name '*.gcda' -print0 | tar --null -czf "${GCDA_ARCHIVE}" --files-from=-
-find . -name '*.gcno' -print0 | tar --null -czf "${GCNO_ARCHIVE}" --files-from=-
+for kind in gcda gcno; do
+  case "${kind}" in
+    gcda) archive="${GCDA_ARCHIVE}" ;;
+    gcno) archive="${GCNO_ARCHIVE}" ;;
+  esac
+  # tar given an empty --files-from writes a valid empty archive and exits 0,
+  # so a missing set would survive as a plausible-looking file and only be
+  # noticed once the batch it belongs to had already finished. Count first.
+  count=$(find . -name "*.${kind}" | wc -l)
+  if [ "${count}" -eq 0 ]; then
+    echo "No .${kind} files under ${COVERAGE_DIR}; refusing to write an" \
+      "empty ${archive}." >&2
+    exit 1
+  fi
+  find . -name "*.${kind}" -print0 | tar --null -czf "${archive}" --files-from=-
+  echo "Archived ${count} .${kind} file(s) to ${archive}"
+done
 
 # The rewritten paths are workspace-relative, so render from the workspace.
 cd /apollo
