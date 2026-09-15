@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 from deft.impl.deft_apollo import DeFTApollo
+from deft.impl.deft_apollo_st import DeFTApolloST
 from deft.impl.deft_heuristic import DeFTHeuristic
 from deft.impl.deft_log import DeFTLog
 from deft.map_detect import MapDetectionError, describe, detect_map
@@ -10,6 +11,7 @@ from deft.metadata import write_metadata
 
 IMPLEMENTATIONS = {
     'apollo': DeFTApollo,
+    'apollo-st': DeFTApolloST,
     'heuristic': DeFTHeuristic,
     'log': DeFTLog,
 }
